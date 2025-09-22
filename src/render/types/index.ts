@@ -1,0 +1,10 @@
+// Импорт общих типов
+export type { Class, Group, Student, Lesson, LessonStudent, StudentConflict } from '../../electron/shared-types';
+
+// UI-специфичные типы
+export interface SelectedGroup {
+  classId: string;
+  className: string;
+  groupId: string;
+  groupName: string;
+}

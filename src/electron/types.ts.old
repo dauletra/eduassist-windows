@@ -1,0 +1,27 @@
+// Типизация для Electron API
+export interface IElectronAPI {
+  // Голосовые команды
+  startVoiceRecording: () => Promise<void>;
+  stopVoiceRecording: () => Promise<void>;
+  
+  // Команды учителя
+  divideStudentsIntoGroups: (count: number) => Promise<string[]>;
+  selectRandomStudent: () => Promise<string>;
+  setGrade: (student: string, grade: number) => Promise<void>;
+  openPresentation: (name: string) => Promise<void>;
+  printTasks: () => Promise<void>;
+  
+  // Управление окном
+  minimizeWindow: () => Promise<void>;
+  closeWindow: () => Promise<void>;
+  
+  // События
+  onRecordingStateChange: (callback: (isRecording: boolean) => void) => void;
+  removeRecordingStateListener: () => void;
+}
+
+declare global {
+  interface Window {
+    electronAPI: IElectronAPI;
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "appId": "com.dauletrakhmankul.eduassist-windows",
+  "files": ["dist-electron", "dist-react"],
+  "icon": "./desktopIcon.png",
+  "win": {
+    "target": "portable"
+  }
+}
