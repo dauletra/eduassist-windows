@@ -11,6 +11,8 @@ interface RandomizerTabProps {
 
 const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerTabProps) => {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [selectedGroupStudents, setSelectedGroupStudents] = useState<(string | null)[]>([]);
+  // const [selectedStudents, setSelectedStudents] = useState<(string | null)[]>([]);
   const [isRandomizing, setIsRandomizing] = useState(false);
   const [randomGroups, setRandomGroups] = useState<string[][]>([]);
   const [groupCount, setGroupCount] = useState(3);
@@ -20,6 +22,26 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
   // Добавь это состояние в начало компонента
   const [isFormingGroups, setIsFormingGroups] = useState(false);
   const [animatingStudent, setAnimatingStudent] = useState<string | null>(null);
+  const [selectFromGroup, setSelectFromGroup] = useState<number | null>(null);
+  const [groupScores, setGroupScores] = useState<number[]>([]);
+
+  // Добавь функции для управления баллами
+  const updateGroupScore = (groupIndex: number, change: number) => {
+    setGroupScores(prev => {
+      const newScores = [...prev];
+      newScores[groupIndex] = Math.max(0, (newScores[groupIndex] || 0) + change);
+      return newScores;
+    });
+  };
+
+  const setGroupScoreDirectly = (groupIndex: number, value: string) => {
+    const score = parseInt(value) || 0;
+    setGroupScores(prev => {
+      const newScores = [...prev];
+      newScores[groupIndex] = Math.max(0, score);
+      return newScores;
+    });
+  };
 
   // Получаем список студентов с учетом посещаемости
   const availableStudents = useMemo(() => {
@@ -130,15 +152,38 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
     }
   }, [availableStudents.length, groupCount, divisionMode, peoplePerGroup]);
 
-  const randomizeStudent = async () => {
+  // Измени функцию randomizeStudent:
+  const randomizeStudent = async (groupIndex: number | null = null) => {
     if (!availableStudents.length) return;
 
     setIsRandomizing(true);
-    setSelectedStudent(null);
+    setSelectFromGroup(groupIndex);
+
+    const studentsToSelect = groupIndex !== null
+      ? randomGroups[groupIndex].map(name => availableStudents.find(s => s.name === name)!).filter(Boolean)
+      : availableStudents;
+
+    if (studentsToSelect.length === 0) return;
 
     for (let i = 0; i < 10; i++) {
-      const randomIndex = Math.floor(Math.random() * availableStudents.length);
-      setSelectedStudent(availableStudents[randomIndex].name);
+      const randomIndex = Math.floor(Math.random() * studentsToSelect.length);
+      const student = studentsToSelect[randomIndex].name;
+
+      if (randomGroups.length === 0) {
+        // Режим без групп
+        setSelectedStudent(student);
+      } else if (groupIndex !== null) {
+        // Выбор из конкретной группы
+        setSelectedGroupStudents(prev => {
+          const newSelected = [...prev];
+          newSelected[groupIndex] = student;
+          return newSelected;
+        });
+      } else {
+        // Выбор из всех групп
+        setSelectedGroupStudents(randomGroups.map(() => student));
+      }
+
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
@@ -246,10 +291,10 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
     return { groups: groups.filter(g => g.length > 0), conflicts: conflictsCount };
   };
 
-  // Улучшенный алгоритм разделения с учетом конфликтов
   // Анимированное разделение на группы
   const divideIntoGroups = async () => {
     if (!availableStudents.length) return;
+    // setSelectedStudent(null)  // Сам добавил чтобы при делении на группы сбросить выбранного студента
 
     setIsFormingGroups(true);
     setRandomGroups([]);
@@ -287,7 +332,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
 
       setAnimatingStudent(`Размещаю: ${student.name} → Группа ${groupIndex + 1}`);
 
-      const currentGroups = result.groups.map((group, gIndex) => {
+      const finalNameGroups  = result.groups.map((group, gIndex) => {
         if (gIndex < groupIndex) {
           return group.map(s => s.name);
         } else if (gIndex === groupIndex) {
@@ -298,7 +343,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
         }
       });
 
-      setRandomGroups(currentGroups);
+      setRandomGroups(finalNameGroups );
       await new Promise(resolve => setTimeout(resolve, 300));
     }
 
@@ -315,6 +360,10 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
 
     const finalNameGroups = result.groups.map(group => group.map(student => student.name));
     setRandomGroups(finalNameGroups);
+    // setSelectedStudents(new Array(finalNameGroups.length).fill(null)); // Добавь эту строку
+    setGroupScores(new Array(finalNameGroups.length).fill(0)); // Добавь эту строку
+    setSelectedGroupStudents(new Array(finalNameGroups.length).fill(null));
+    setSelectedStudent(null);
   };
 
   const handleGroupCountChange = (newCount: number) => {
@@ -324,7 +373,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
     } else {
       setPeoplePerGroup(clampedCount);
     }
-    setRandomGroups([]);
+
   };
 
   // Сбрасываем выбранного студента при изменении настроек
@@ -332,12 +381,10 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
     if (selectedStudent && !availableStudents.some(s => s.name === selectedStudent)) {
       setSelectedStudent(null);
     }
-  }, [includeAbsent, selectedStudent, availableStudents]);
-
-  // Очищаем группы при смене режима разделения
-  useEffect(() => {
-    setRandomGroups([]);
-  }, [divisionMode]);
+    if (selectedGroupStudents.length > 0 && !availableStudents.some(s => selectedGroupStudents.includes(s.name))) {
+      setSelectedGroupStudents([]);
+    }
+  }, [includeAbsent, selectedStudent, selectedGroupStudents, availableStudents]);
 
   if (!currentLesson) {
     return (
@@ -369,7 +416,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
                   checked={includeAbsent}
                   onChange={(e) => {
                     setIncludeAbsent(e.target.checked);
-                    setRandomGroups([]);
+                    // setRandomGroups([]);
                   }}
                   className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                 />
@@ -437,7 +484,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
               </span>
             </div>
 
-            {groupData?.conflicts && groupData.conflicts.length > 0 && (
+            { /* groupData?.conflicts && groupData.conflicts.length > 0 && (
               <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
                 <p className="text-xs text-yellow-800 font-medium mb-1">
                   ⚠️ Учитываются конфликты между студентами
@@ -446,19 +493,74 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
                   {groupData.conflicts.length} {groupData.conflicts.length === 1 ? 'конфликт' : 'конфликта'} настроено
                 </p>
               </div>
-            )}
+            ) */}
           </div>
 
           {/* Кнопки действий */}
           <div className="flex gap-4">
-            <button
-              onClick={randomizeStudent}
-              disabled={isRandomizing || availableStudents.length === 0}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-            >
-              <Shuffle size={20} className={isRandomizing ? 'animate-spin' : ''} />
-              {isRandomizing ? 'Выбираю...' : 'Выбрать ученика'}
-            </button>
+            {randomGroups.length === 0 ? (
+              <>
+                <button
+                  onClick={() => randomizeStudent(null)}
+                  disabled={isRandomizing || availableStudents.length === 0}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Shuffle size={20} className={isRandomizing ? 'animate-spin' : ''} />
+                  {isRandomizing ? 'Выбираю...' : 'Выбрать ученика'}
+                </button>
+
+                {randomGroups.length === 0 ? (
+                  selectedStudent && (
+                    <button
+                      onClick={() => setSelectedStudent(null)}
+                      className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all duration-200 flex items-center gap-2"
+                    >
+                      Сбросить выбор
+                    </button>
+                  )
+                ) : (
+                  selectedGroupStudents.some(s => s !== null) && (
+                    <button
+                      onClick={() => setSelectedGroupStudents(new Array(randomGroups.length).fill(null))}
+                      className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all duration-200 flex items-center gap-2"
+                    >
+                      Сбросить выбор
+                    </button>
+                  )
+                )}
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => randomizeStudent(null)}
+                  disabled={isRandomizing || availableStudents.length === 0}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Shuffle size={20} className={isRandomizing && selectFromGroup === null ? 'animate-spin' : ''} />
+                  {isRandomizing && selectFromGroup === null ? 'Выбираю...' : 'Выбрать из всех'}
+                </button>
+
+                {randomGroups.length === 0 ? (
+                  selectedStudent && (
+                    <button
+                      onClick={() => setSelectedStudent(null)}
+                      className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all duration-200 flex items-center gap-2"
+                    >
+                      Сбросить выбор
+                    </button>
+                  )
+                ) : (
+                  selectedGroupStudents.some(s => s !== null) && (
+                    <button
+                      onClick={() => setSelectedGroupStudents(new Array(randomGroups.length).fill(null))}
+                      className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all duration-200 flex items-center gap-2"
+                    >
+                      Сбросить выбор
+                    </button>
+                  )
+                )}
+              </>
+            )}
 
             <button
               onClick={divideIntoGroups}
@@ -494,8 +596,34 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
           </div>
         )}
 
-        {/* Отображение групп */}
-        {randomGroups.length > 0 && (
+        {/* Показываем либо список учеников, либо группы */}
+        {randomGroups.length === 0 ? (
+          // Список учеников
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <Users size={20} />
+              {selectedGroup.groupName} ({availableStudents.length} из {groupData?.students.length} учеников)
+            </h3>
+            {availableStudents.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {availableStudents.map((student) => (
+                  <div
+                    key={student.id}
+                    className={`p-2 rounded text-sm transition-all duration-300 ${
+                      selectedStudent === student.name
+                        ? 'bg-green-200 border-2 border-green-500 scale-105 font-bold'
+                        : 'bg-blue-100 hover:bg-blue-200'
+                    }`}
+                  >
+                    {student.name}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">Нет доступных учеников</p>
+            )}
+          </div>
+        ) : (
           <div className={`grid gap-4 ${
             randomGroups.length <= 3 ? 'grid-cols-3' :
               randomGroups.length <= 4 ? 'grid-cols-4' :
@@ -503,45 +631,70 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
           }`}>
             {randomGroups.map((group, index) => (
               <div key={index} className="bg-purple-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-purple-800 mb-2 flex items-center justify-between">
-                  Группа {index + 1}
-                  <span className="text-xs font-normal text-purple-600">
-                    ({group.length} чел.)
-                  </span>
-                </h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-purple-800 flex items-center gap-2">
+                    Группа {index + 1}
+                    <span className="text-xs font-normal text-purple-600">
+              ({group.length} чел.)
+            </span>
+                  </h4>
+                  <button
+                    onClick={() => randomizeStudent(index)}
+                    disabled={isRandomizing || group.length === 0}
+                    className="p-1 rounded bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:opacity-50"
+                    title="Выбрать из этой группы"
+                  >
+                    <Shuffle size={16} className={isRandomizing && selectFromGroup === index ? 'animate-spin' : ''} />
+                  </button>
+                </div>
+
+                {/* Баллы группы */}
+                <div className="mb-3 p-2 bg-white rounded-lg border-2 border-purple-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-purple-700">Баллы:</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => updateGroupScore(index, -1)}
+                        className="p-1 rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <input
+                        type="number"
+                        value={groupScores[index] || 0}
+                        onChange={(e) => setGroupScoreDirectly(index, e.target.value)}
+                        className="w-16 text-center border border-purple-300 rounded px-1 py-0.5 text-lg font-bold text-purple-800"
+                        min="0"
+                      />
+                      <button
+                        onClick={() => updateGroupScore(index, 1)}
+                        className="p-1 rounded bg-green-500 text-white hover:bg-green-600 transition-colors"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {group.map((student, idx) => (
-                  <div key={idx} className="text-sm text-gray-700 py-1">{student}</div>
+                  <div
+                    key={idx}
+                    className={`text-lg py-1 transition-all duration-300 ${
+                      selectedGroupStudents[index] === student
+                        ? 'text-green-600 font-bold scale-105'
+                        : 'text-gray-700'
+                    }`}
+                  >
+                    {student}
+                  </div>
                 ))}
               </div>
             ))}
           </div>
         )}
 
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h3 className="font-semibold mb-3 flex items-center gap-2">
-            <Users size={20} />
-            {selectedGroup.groupName} ({availableStudents.length} из {groupData?.students.length} учеников)
-          </h3>
-          {availableStudents.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              {availableStudents.map((student) => (
-                <div
-                  key={student.id}
-                  className={`p-2 rounded text-sm transition-all duration-300 ${
-                    selectedStudent === student.name
-                      ? 'bg-green-200 border-2 border-green-500 scale-105 font-bold'
-                      : 'bg-blue-100 hover:bg-blue-200'
-                  }`}
-                >
-                  {student.name}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-sm">Нет доступных учеников</p>
-          )}
-        </div>
       </div>
+      <div className="min-h-60"></div>
     </div>
   );
 };
