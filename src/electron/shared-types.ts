@@ -66,9 +66,9 @@ export interface LessonStudent {
   grade: number | null;
 }
 
-// Интерфейс для конфликтов между студентами
+// Интерфейс для конфликтов между студентами (только парные)
 export interface StudentConflict {
-  students: string[]; // ID студентов
+  students: [string, string]; // Ровно 2 ID студентов
   reason?: string;
 }
 

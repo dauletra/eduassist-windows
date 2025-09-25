@@ -41,31 +41,47 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
     });
   }, [currentLesson, groupData, includeAbsent]);
 
-  // Создаем карту конфликтов (по ID студентов)
+  // Создаем карту парных конфликтов
   const conflictMap = useMemo(() => {
     if (!groupData?.conflicts) return new Map();
 
     const map = new Map<string, Set<string>>();
 
     groupData.conflicts.forEach(conflict => {
-      conflict.students.forEach(studentId1 => {
-        if (!map.has(studentId1)) {
-          map.set(studentId1, new Set());
-        }
-        conflict.students.forEach(studentId2 => {
-          if (studentId1 !== studentId2) {
-            map.get(studentId1)!.add(studentId2);
-          }
-        });
-      });
+      const [studentId1, studentId2] = conflict.students;
+
+      if (!map.has(studentId1)) {
+        map.set(studentId1, new Set());
+      }
+      if (!map.has(studentId2)) {
+        map.set(studentId2, new Set());
+      }
+
+      map.get(studentId1)!.add(studentId2);
+      map.get(studentId2)!.add(studentId1);
     });
 
     return map;
   }, [groupData]);
 
-  // Проверяет, есть ли конфликт между двумя студентами (по ID)
+  // Проверяет, есть ли конфликт между двумя студентами
   const hasConflict = (studentId1: string, studentId2: string): boolean => {
     return conflictMap.get(studentId1)?.has(studentId2) ?? false;
+  };
+
+  // Подсчет конфликтов в группах
+  const countConflicts = (groups: Student[][]): number => {
+    let conflicts = 0;
+    for (const group of groups) {
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          if (hasConflict(group[i].id, group[j].id)) {
+            conflicts++;
+          }
+        }
+      }
+    }
+    return conflicts;
   };
 
   // Рассчитываем оптимальные параметры групп
@@ -114,14 +130,12 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
     }
   }, [availableStudents.length, groupCount, divisionMode, peoplePerGroup]);
 
-
   const randomizeStudent = async () => {
     if (!availableStudents.length) return;
 
     setIsRandomizing(true);
     setSelectedStudent(null);
 
-    // Анимация рандомизации
     for (let i = 0; i < 10; i++) {
       const randomIndex = Math.floor(Math.random() * availableStudents.length);
       setSelectedStudent(availableStudents[randomIndex].name);
@@ -131,7 +145,109 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
     setIsRandomizing(false);
   };
 
+  // Детерминированный алгоритм разделения с backtracking
+  const createBalancedGroups = (students: Student[]): { groups: Student[][], conflicts: number } => {
+    const totalGroups = divisionMode === 'groups' ? groupCount : Math.ceil(students.length / peoplePerGroup);
+    const groups: Student[][] = Array(totalGroups).fill(null).map(() => []);
+
+    // Вычисляем целевые размеры групп
+    const targetSizes: number[] = [];
+    if (divisionMode === 'groups') {
+      const base = Math.floor(students.length / groupCount);
+      const remainder = students.length % groupCount;
+      for (let i = 0; i < groupCount; i++) {
+        targetSizes.push(base + (i < remainder ? 1 : 0));
+      }
+    } else {
+      let remaining = students.length;
+      while (remaining > 0) {
+        targetSizes.push(Math.min(peoplePerGroup, remaining));
+        remaining -= peoplePerGroup;
+      }
+    }
+
+    // Перемешиваем студентов для случайности
+    const shuffled = [...students].sort(() => Math.random() - 0.5);
+
+    // Рекурсивная функция размещения с возвратом
+    const placeStudent = (index: number): boolean => {
+      if (index === shuffled.length) {
+        return true; // Все размещены
+      }
+
+      const student = shuffled[index];
+
+      for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+        // Проверяем, не превышен ли размер группы
+        if (groups[groupIndex].length >= targetSizes[groupIndex]) {
+          continue;
+        }
+
+        // Проверяем конфликты в этой группе
+        let hasConflictInGroup = false;
+        for (const member of groups[groupIndex]) {
+          if (hasConflict(student.id, member.id)) {
+            hasConflictInGroup = true;
+            break;
+          }
+        }
+
+        if (!hasConflictInGroup) {
+          // Размещаем студента
+          groups[groupIndex].push(student);
+
+          // Пробуем разместить следующего
+          if (placeStudent(index + 1)) {
+            return true;
+          }
+
+          // Откатываем, если не получилось
+          groups[groupIndex].pop();
+        }
+      }
+
+      return false; // Не удалось разместить без конфликтов
+    };
+
+    // Пробуем разместить детерминированно
+    const success = placeStudent(0);
+
+    if (!success) {
+      // Если не удалось без конфликтов, используем жадный алгоритм с минимизацией конфликтов
+      groups.forEach(g => g.length = 0);
+
+      for (const student of shuffled) {
+        let bestGroupIndex = 0;
+        let minConflicts = Infinity;
+        let minSize = Infinity;
+
+        for (let i = 0; i < groups.length; i++) {
+          if (groups[i].length >= targetSizes[i]) continue;
+
+          let conflicts = 0;
+          for (const member of groups[i]) {
+            if (hasConflict(student.id, member.id)) {
+              conflicts++;
+            }
+          }
+
+          if (conflicts < minConflicts || (conflicts === minConflicts && groups[i].length < minSize)) {
+            minConflicts = conflicts;
+            minSize = groups[i].length;
+            bestGroupIndex = i;
+          }
+        }
+
+        groups[bestGroupIndex].push(student);
+      }
+    }
+
+    const conflictsCount = countConflicts(groups);
+    return { groups: groups.filter(g => g.length > 0), conflicts: conflictsCount };
+  };
+
   // Улучшенный алгоритм разделения с учетом конфликтов
+  // Анимированное разделение на группы
   const divideIntoGroups = async () => {
     if (!availableStudents.length) return;
 
@@ -139,97 +255,65 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
     setRandomGroups([]);
     setAnimatingStudent(null);
 
-    const shuffled = [...availableStudents].sort(() => Math.random() - 0.5);
-    let groups: Student[][];
+    // Показываем процесс
+    setAnimatingStudent('🔍 Анализирую конфликты и создаю группы...');
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-    if (divisionMode === 'groups') {
-      groups = Array(groupCount).fill(null).map(() => []);
+    // Создаем сбалансированные группы
+    const result = createBalancedGroups(availableStudents);
+
+    // Показываем результат
+    if (result.conflicts === 0) {
+      setAnimatingStudent('✨ Идеальное решение найдено без конфликтов!');
     } else {
-      groups = [];
+      setAnimatingStudent(`⚠️ Решение с ${result.conflicts} неизбежным${result.conflicts > 1 ? 'и' : ''} конфликт${result.conflicts > 1 ? 'ами' : 'ом'}`);
     }
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Создаем пустые группы для отображения
-    const emptyGroupsCount = divisionMode === 'groups' ? groupCount : Math.ceil(shuffled.length / peoplePerGroup);
-    const emptyGroups = Array(emptyGroupsCount).fill(null).map(() => []);
+    const emptyGroups = Array(result.groups.length).fill(null).map(() => []);
     setRandomGroups(emptyGroups.map(() => []));
 
-    // Показываем перемешивание студентов
-    for (let i = 0; i < 5; i++) {
-      const randomStudent = shuffled[Math.floor(Math.random() * shuffled.length)];
-      setAnimatingStudent(randomStudent.name);
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    setAnimatingStudent(null);
+    setAnimatingStudent('🎲 Начинаю размещение студентов...');
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Анимация размещения студентов
-    for (let index = 0; index < shuffled.length; index++) {
-      const student = shuffled[index];
+    // Анимация размещения
+    const allStudents = result.groups.flat();
+    for (let index = 0; index < allStudents.length; index++) {
+      const student = allStudents[index];
+      const groupIndex = result.groups.findIndex(group =>
+        group.some(s => s.id === student.id)
+      );
 
-      // Показываем какой студент сейчас размещается
-      setAnimatingStudent(student.name);
-      await new Promise(resolve => setTimeout(resolve, 400));
+      setAnimatingStudent(`Размещаю: ${student.name} → Группа ${groupIndex + 1}`);
 
-      if (divisionMode === 'groups') {
-        const groupIndex = index % groupCount;
-        groups[groupIndex].push(student);
-      } else {
-        const groupIndex = Math.floor(index / peoplePerGroup);
-        if (!groups[groupIndex]) {
-          groups[groupIndex] = [];
+      const currentGroups = result.groups.map((group, gIndex) => {
+        if (gIndex < groupIndex) {
+          return group.map(s => s.name);
+        } else if (gIndex === groupIndex) {
+          const currentStudentIndex = group.findIndex(s => s.id === student.id);
+          return group.slice(0, currentStudentIndex + 1).map(s => s.name);
+        } else {
+          return [];
         }
-        groups[groupIndex].push(student);
-      }
+      });
 
-      // Обновляем отображение
-      const nameGroups = groups
-        .filter(group => group.length > 0)
-        .map(group => group.map(student => student.name));
-
-      setRandomGroups(nameGroups);
+      setRandomGroups(currentGroups);
       await new Promise(resolve => setTimeout(resolve, 300));
     }
 
-    setAnimatingStudent(null);
-
-    // Анимация разрешения конфликтов
-    for (let i = 0; i < groups.length; i++) {
-      for (let j = 0; j < groups[i].length; j++) {
-        for (let k = j + 1; k < groups[i].length; k++) {
-          if (hasConflict(groups[i][j].id, groups[i][k].id)) {
-            // Показываем конфликт
-            setAnimatingStudent(`${groups[i][j].name} ⚡ ${groups[i][k].name}`);
-            await new Promise(resolve => setTimeout(resolve, 600));
-
-            for (let targetGroup = 0; targetGroup < groups.length; targetGroup++) {
-              if (targetGroup !== i) {
-                const studentToMove = groups[i].splice(k, 1)[0];
-                groups[targetGroup].push(studentToMove);
-                k--;
-
-                // Показываем перемещение
-                setAnimatingStudent(`${studentToMove.name} → Группа ${targetGroup + 1}`);
-
-                const nameGroups = groups
-                  .filter(group => group.length > 0)
-                  .map(group => group.map(student => student.name));
-                setRandomGroups(nameGroups);
-                await new Promise(resolve => setTimeout(resolve, 500));
-                break;
-              }
-            }
-            break;
-          }
-        }
-      }
+    // Финальное сообщение
+    if (result.conflicts === 0) {
+      setAnimatingStudent('🎉 Все группы сформированы без конфликтов!');
+    } else {
+      setAnimatingStudent(`✅ Группы сбалансированы с минимальными конфликтами`);
     }
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     setAnimatingStudent(null);
     setIsFormingGroups(false);
 
-    // Финальное обновление
-    const finalNameGroups = groups
-      .filter(group => group.length > 0)
-      .map(group => group.map(student => student.name));
+    const finalNameGroups = result.groups.map(group => group.map(student => student.name));
     setRandomGroups(finalNameGroups);
   };
 
@@ -353,7 +437,6 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
               </span>
             </div>
 
-            {/* Информация о конфликтах */}
             {groupData?.conflicts && groupData.conflicts.length > 0 && (
               <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
                 <p className="text-xs text-yellow-800 font-medium mb-1">
@@ -398,9 +481,11 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
           <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-4 rounded-lg border-2 border-purple-300 animate-pulse">
             <div className="text-center">
               <div className="text-lg font-bold text-purple-800 mb-2">
-                {animatingStudent.includes('⚡') ? '⚡ Обнаружен конфликт!' :
-                  animatingStudent.includes('→') ? '🔄 Перемещение студента' :
-                    '🎲 Размещаю студента'}
+                {animatingStudent.includes('⚠️') ? '⚠️ Конфликты обнаружены' :
+                  animatingStudent.includes('✨') ? '✨ Идеальное решение' :
+                    animatingStudent.includes('✅') ? '✅ Готово' :
+                      animatingStudent.includes('🎉') ? '🎉 Успешно' :
+                        '🎲 Формирование групп'}
               </div>
               <div className="text-purple-700 font-medium">
                 {animatingStudent}
@@ -425,7 +510,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData } : RandomizerT
                   </span>
                 </h4>
                 {group.map((student, idx) => (
-                  <div key={idx} className="text-xl text-gray-700 py-1">{student}</div>
+                  <div key={idx} className="text-sm text-gray-700 py-1">{student}</div>
                 ))}
               </div>
             ))}
