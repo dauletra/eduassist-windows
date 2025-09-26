@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FileText, Dice1, Monitor } from "lucide-react";
 import FilesTab from "./FilesTab.tsx";
 import DevicesTab from "./DevicesTab.tsx";
-import RandomizerTab from "./RandomizerTab.tsx";
+import RandomizerTab from "./RandomizerTab";
 import type { SelectedGroup, Lesson, Group } from "../types";
 
 interface TabBarProps {
