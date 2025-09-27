@@ -93,15 +93,22 @@ contextBridge.exposeInMainWorld('appState', {
 
 // API для настроек
 contextBridge.exposeInMainWorld('settings', {
-    // Получение настроек
-    getSettings: () => ipcRenderer.invoke('get-settings'),
-
-    // Сохранение настроек
+    // Новые каналы для настроек
+    loadSettings: () => ipcRenderer.invoke('load-settings'),
     saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
 
-    // Ключевое слово
-    setKeyword: (keyword) => ipcRenderer.invoke('set-keyword', keyword),
-    getKeyword: () => ipcRenderer.invoke('get-keyword'),
+    // Управление классами
+    loadStudentsList: () => ipcRenderer.invoke('load-students-list'),
+
+    addClassWithGroups: (className, groupNames) => ipcRenderer.invoke('add-class-with-groups', className, groupNames),
+    updateClass: (classId, updates) => ipcRenderer.invoke('update-class', classId, updates),
+    deleteClass: (classId) => ipcRenderer.invoke('delete-class', classId),
+
+    // Управление группами
+    addGroupToClass: (classId, groupName) => ipcRenderer.invoke('add-group-to-class', classId, groupName),
+
+    // Управление учениками
+    addStudentToGroup: (classId, groupId, studentName) => ipcRenderer.invoke('add-student-to-group', classId, groupId, studentName),
 });
 
 console.log('Voice Assistant Preload Script Loaded');

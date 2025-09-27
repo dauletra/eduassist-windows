@@ -166,6 +166,11 @@ const EduAssist = () => {
     setCurrentLesson(null);
   };
 
+  // Обработчик обновления настроек
+  const handleSettingsUpdate = () => {
+    loadClassData();
+  };
+
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
       <div className="w-80 bg-white border-r flex flex-col min-h-0">
@@ -179,6 +184,7 @@ const EduAssist = () => {
           onBackToGroups={handleBackToGroups}
           onUpdateGrade={handleUpdateGrade}
           onUpdateAttendance={handleUpdateAttendance}
+          onSettingsUpdate={handleSettingsUpdate}
         />
       </div>
 

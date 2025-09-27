@@ -4,7 +4,8 @@ import type { IElectronAPI } from '../electron/shared-types';
 // Глобальные типы для renderer процесса
 declare global {
   interface Window {
-    electronAPI: IElectronAPI;
+    electronAPI: IElectronAPI,
+    settings: settings
   }
 }
 

@@ -1,7 +1,8 @@
 import { ipcMain, shell, app } from 'electron';
 import * as path from 'path';
-import * as fs from 'fs';
-import type { PresentationConfig, Class, Lesson } from './shared-types.js';
+import * as fs from 'fs/promises';
+import * as fsinc from 'fs';
+import type { PresentationConfig, Class, Lesson, Student, Group } from './shared-types.js';
 import {
   loadStudentsList,
   loadAppConfig,
@@ -15,6 +16,12 @@ import {
   getStudentsByGroup,
 
 } from './data-utils.js';
+
+
+// Путь к файлам данных
+const DATA_DIR = path.join(app.getPath('downloads'), 'eduassist-windows-files');
+const STUDENTS_FILE = path.join(DATA_DIR, 'students.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 let mainWindow: Electron.BrowserWindow;
 let isRecording = false;
@@ -31,6 +38,7 @@ export function setupElectronAPI(window: Electron.BrowserWindow) {
   initializeDataStructure();
   loadInitialData();
 
+  setupSettingsHandlers();
   setupVoiceHandlers();
   setupLessonHandlers();
   setupTeacherCommands();
@@ -63,6 +71,173 @@ function loadInitialData(): void {
     }
   };
 }
+
+// Обработчики настроек
+export function setupSettingsHandlers() {
+
+  // Загрузка настроек
+  ipcMain.handle('load-settings', async () => {
+    try {
+      await ensureDataDirectory();
+      const data = await fs.readFile(SETTINGS_FILE, 'utf-8');
+      return JSON.parse(data);
+    } catch (error) {
+      console.log('Настройки не найдены, используем значения по умолчанию', error);
+      return config;
+    }
+  });
+
+  // Сохранение настроек
+  ipcMain.handle('save-settings', async (_event, settings) => {
+    try {
+      await ensureDataDirectory();
+      await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+      return { success: true };
+    } catch (error) {
+      console.error('Ошибка сохранения настроек:', error);
+      throw error;
+    }
+  });
+
+  // Добавление класса с группами
+  ipcMain.handle('add-class-with-groups', async (_event, className: string, groupNames: string[]) => {
+    try {
+      const classes = await loadStudentsData();
+
+      const newClass: Class = {
+        id: `class-${Date.now()}`,
+        name: className,
+        groups: groupNames.map((groupName, index) => ({
+          id: `group-${Date.now()}-${index}`,
+          name: groupName,
+          students: [],
+          conflicts: []
+        }))
+      };
+
+      classes.push(newClass);
+      await saveStudentsData(classes);
+
+      return { success: true, class: newClass };
+    } catch (error) {
+      console.error('Ошибка добавления класса:', error);
+      throw error;
+    }
+  });
+
+  // Обновление класса
+  ipcMain.handle('update-class', async (_event, classId: string, updates: Partial<Class>) => {
+    try {
+      const classes = await loadStudentsData();
+      const index = classes.findIndex(c => c.id === classId);
+
+      if (index === -1) {
+        throw new Error('Класс не найден');
+      }
+
+      classes[index] = { ...classes[index], ...updates };
+      await saveStudentsData(classes);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Ошибка обновления класса:', error);
+      throw error;
+    }
+  });
+
+  // Удаление класса
+  ipcMain.handle('delete-class', async (_event, classId: string) => {
+    try {
+      const classes = await loadStudentsData();
+      const filtered = classes.filter(c => c.id !== classId);
+
+      await saveStudentsData(filtered);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Ошибка удаления класса:', error);
+      throw error;
+    }
+  });
+
+  // Добавление группы в класс
+  ipcMain.handle('add-group-to-class', async (_event, classId: string, groupName: string) => {
+    try {
+      const classes = await loadStudentsData();
+      const cls = classes.find(c => c.id === classId);
+
+      if (!cls) {
+        throw new Error('Класс не найден');
+      }
+
+      const newGroup: Group = {
+        id: `group-${Date.now()}`,
+        name: groupName,
+        students: [],
+        conflicts: []
+      };
+
+      cls.groups.push(newGroup);
+      await saveStudentsData(classes);
+
+      return { success: true, group: newGroup };
+    } catch (error) {
+      console.error('Ошибка добавления группы:', error);
+      throw error;
+    }
+  });
+
+  // Добавление ученика в группу
+  ipcMain.handle('add-student-to-group', async (_event, classId: string, groupId: string, studentName: string) => {
+    try {
+      const classes = await loadStudentsData();
+      const cls = classes.find(c => c.id === classId);
+      const group = cls?.groups.find(g => g.id === groupId);
+
+      if (!group) {
+        throw new Error('Группа не найдена');
+      }
+
+      const newStudent: Student = {
+        id: `student-${Date.now()}`,
+        name: studentName
+      };
+
+      group.students.push(newStudent);
+      await saveStudentsData(classes);
+
+      return { success: true, student: newStudent };
+    } catch (error) {
+      console.error('Ошибка добавления ученика:', error);
+      throw error;
+    }
+  });
+}
+
+// Вспомогательные функции
+async function ensureDataDirectory() {
+  try {
+    await fs.access(DATA_DIR);
+  } catch {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+  }
+}
+
+async function loadStudentsData(): Promise<Class[]> {
+  try {
+    await ensureDataDirectory();
+    const data = await fs.readFile(STUDENTS_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+async function saveStudentsData(classes: Class[]) {
+  await ensureDataDirectory();
+  await fs.writeFile(STUDENTS_FILE, JSON.stringify(classes, null, 2), 'utf-8');
+}
+
 
 /**
  * Обработчики голосовых команд
@@ -198,7 +373,7 @@ async function openPresentationFile(presentation: PresentationConfig): Promise<v
   ];
 
   for (const fullPath of possiblePaths) {
-    if (fs.existsSync(fullPath)) {
+    if (fsinc.existsSync(fullPath)) {
       await shell.openPath(fullPath);
       return;
     }
@@ -237,7 +412,7 @@ async function openPresentationFile(presentation: PresentationConfig): Promise<v
 </html>`;
 
   const tempPath = path.join(app.getPath('temp'), `presentation-info-${Date.now()}.html`);
-  fs.writeFileSync(tempPath, fallbackHtml, 'utf8');
+  fsinc.writeFileSync(tempPath, fallbackHtml, 'utf8');
   await shell.openPath(tempPath);
 }
 
@@ -315,7 +490,7 @@ async function generateAndPrintTasks(): Promise<void> {
 </html>`;
 
   const tempPath = path.join(app.getPath('temp'), `tasks-${Date.now()}.html`);
-  fs.writeFileSync(tempPath, tasksHtml, 'utf8');
+  fsinc.writeFileSync(tempPath, tasksHtml, 'utf8');
   await shell.openPath(tempPath);
 }
 

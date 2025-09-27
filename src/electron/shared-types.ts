@@ -26,6 +26,21 @@ export interface IElectronAPI {
   // События
   onRecordingStateChange: (callback: (isRecording: boolean) => void) => void;
   removeRecordingStateListener: () => void;
+
+  // Новые методы для настроек
+  loadSettings: () => Promise<AppConfig>;
+  saveSettings: (settings: Partial<AppConfig>) => Promise<{ success: boolean }>;
+
+  // Управление классами
+  addClassWithGroups: (className: string, groupNames: string[]) => Promise<{ success: boolean; class: Class }>;
+  updateClass: (classId: string, updates: Partial<Class>) => Promise<{ success: boolean }>;
+  deleteClass: (classId: string) => Promise<{ success: boolean }>;
+
+  // Управление группами
+  addGroupToClass: (classId: string, groupName: string) => Promise<{ success: boolean; group: Group }>;
+
+  // Управление учениками
+  addStudentToGroup: (classId: string, groupId: string, studentName: string) => Promise<{ success: boolean; student: Student }>;
 }
 
 // Структура класса

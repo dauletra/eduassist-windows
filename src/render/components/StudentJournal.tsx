@@ -1,6 +1,6 @@
 // import {type Dispatch, type SetStateAction} from 'react';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, Settings, MessageSquare, UserX } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, MessageSquare, UserX } from 'lucide-react';
 import type {SelectedGroup, Lesson } from '../types';
 
 interface StudentJournalProps {
@@ -129,11 +129,6 @@ const StudentJournal = ({
     console.log('Сохранение завершено');
     setTimeout(() => setSaving(false), 1000);
   }, []);
-
-  const handleSettings = useCallback(() => {
-    console.log('Настройки группы:', selectedGroup);
-  }, [selectedGroup]);
-
 
   return (
     <div className="flex flex-col h-full">
@@ -309,14 +304,6 @@ const StudentJournal = ({
             className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 transition-colors font-medium"
           >
             Сохранить изменения
-          </button>
-
-          <button
-            onClick={handleSettings}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-          >
-            <Settings size={16} />
-            Настройки группы
           </button>
         </div>
       </div>
