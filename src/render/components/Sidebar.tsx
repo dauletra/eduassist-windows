@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import GroupSelector from './GroupSelector';
 import StudentJournal from './StudentJournal';
-import Settings from './Settings';
 import type { SelectedGroup, Class, Lesson } from '../types';
 
 
@@ -29,9 +27,15 @@ const Sidebar = ({
   onBackToGroups,
   onUpdateGrade,
   onUpdateAttendance,
-  onSettingsUpdate,
 }: SidebarProps) => {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const handleOpenSettings = async () => {
+    try {
+      await window.electronAPI.openSettingsWindow();
+    } catch (error) {
+      console.error('Ошибка открытия окна настроек:', error);
+    }
+  }
 
   return (
     <>
@@ -63,7 +67,7 @@ const Sidebar = ({
           Настройки
         </h2>
         <button
-          onClick={() => setIsSettingsOpen(true)}
+          onClick={() => handleOpenSettings()}
           className="p-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
           title="Настройки"
         >
@@ -71,13 +75,6 @@ const Sidebar = ({
         </button>
       </div>
 
-
-      {/* Модальное окно настроек */}
-      <Settings
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onSettingsUpdate={onSettingsUpdate}
-      />
     </>
   );
 };

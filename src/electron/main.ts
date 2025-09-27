@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { setupElectronAPI } from './api-handlers.js';
+import { createSettingsWindow } from "./settings-window.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +49,18 @@ function createMainWindow(): void {
 
   // Инициализируем API после создания окна
   setupElectronAPI(mainWindow);
+
+  // Обработчик открытия окна настроек
+  ipcMain.handle('open-settings-window', () => {
+    createSettingsWindow(mainWindow);
+  })
+
+  // Обработчик уведомлений от окна настроек к главному окну
+  ipcMain.on('notify-main-window', (_event, channel: string) => {
+    if (channel === 'settings-updated') {
+      mainWindow.webContents.send('settings-updated');
+    }
+  })
   
   console.log('🚀 Главное окно создано');
 }

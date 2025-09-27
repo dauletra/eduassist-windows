@@ -18,7 +18,7 @@ const ClassesSettings = ({ onUpdate }: ClassesSettingsProps) => {
 
   const loadClasses = async () => {
     try {
-      const data = await window.settings.loadStudentsList();
+      const data = await window.electronAPI.loadStudentsList();
       setClasses(data);
     } catch (error) {
       console.error('Ошибка загрузки классов:', error);
@@ -32,7 +32,7 @@ const ClassesSettings = ({ onUpdate }: ClassesSettingsProps) => {
     if (validGroups.length === 0) return;
 
     try {
-      await window.settings.addClassWithGroups(newClassName.trim(), validGroups);
+      await window.electronAPI.addClassWithGroups(newClassName.trim(), validGroups);
       await loadClasses();
       onUpdate();
       setIsAdding(false);
@@ -47,7 +47,7 @@ const ClassesSettings = ({ onUpdate }: ClassesSettingsProps) => {
     if (!confirm('Вы уверены, что хотите удалить этот класс?')) return;
 
     try {
-      await window.settings.deleteClass(classId);
+      await window.electronAPI.deleteClass(classId);
       await loadClasses();
       onUpdate();
     } catch (error) {

@@ -131,6 +131,18 @@ const EduAssist = () => {
   // Загрузка данных при монтировании
   useEffect(() => {
     loadClassData();
+
+    // Слушаем обновления из окна настроек
+    const handleSettingsUpdate = () => {
+      console.log('📩 Получено уведомление об обновлении настроек');
+      loadClassData();
+    }
+
+    window.electronAPI.onSettingsUpdated(handleSettingsUpdate);
+
+    return () => {
+      window.electronAPI.removeSettingsUpdatedListener()
+    }
   }, []);
 
   // Загрузка данных класса

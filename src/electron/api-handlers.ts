@@ -90,11 +90,50 @@ export function setupSettingsHandlers() {
   // Сохранение настроек
   ipcMain.handle('save-settings', async (_event, settings) => {
     try {
+      console.log('📥 Получены настройки для сохранения:', settings);
+
+      if (!settings) {
+        console.error('❌ Настройки не переданы (undefined)');
+        throw new Error('Настройки не могут быть undefined');
+      }
+
       await ensureDataDirectory();
-      await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+
+      // Загружаем текущие настройки
+      let currentSettings = config; // Используем config по умолчанию
+      try {
+        const data = await fs.readFile(SETTINGS_FILE, 'utf-8');
+        currentSettings = JSON.parse(data);
+      } catch (error) {
+        console.log('⚠️ Текущие настройки не найдены, используем значения по умолчанию');
+      }
+
+      // Объединяем текущие настройки с новыми (глубокое слияние)
+      const updatedSettings = {
+        ...currentSettings,
+        ...settings,
+        ui: {
+          ...currentSettings.ui,
+          ...settings.ui
+        },
+        voice: {
+          ...currentSettings.voice,
+          ...settings.voice
+        },
+        education: {
+          ...currentSettings.education,
+          ...settings.education
+        }
+      };
+
+      console.log('💾 Сохраняем настройки:', updatedSettings);
+
+      await fs.writeFile(SETTINGS_FILE, JSON.stringify(updatedSettings, null, 2), 'utf-8');
+
+      console.log('✅ Настройки успешно сохранены');
       return { success: true };
     } catch (error) {
-      console.error('Ошибка сохранения настроек:', error);
+      console.error('❌ Ошибка сохранения настроек:', error);
       throw error;
     }
   });

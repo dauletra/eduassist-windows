@@ -29,7 +29,7 @@ const GradesSettings = () => {
 
   const loadSettings = async () => {
     try {
-      const data = await window.settings.loadSettings();
+      const data = await window.electronAPI.loadSettings();
       if (data?.education) {
         setSettings(prev => ({ ...prev, education: data.education }));
       }
@@ -49,7 +49,7 @@ const GradesSettings = () => {
     setSettings(updated);
 
     try {
-      await window.settings.saveSettings(updated);
+      await window.electronAPI.saveSettings(updated);
     } catch (error) {
       console.error('Ошибка сохранения настроек:', error);
     }

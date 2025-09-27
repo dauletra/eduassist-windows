@@ -27,7 +27,7 @@ const VoiceSettings = () => {
 
   const loadSettings = async () => {
     try {
-      const data = await window.settings.loadSettings();
+      const data = await window.electronAPI.loadSettings();
       if (data?.voice) {
         setSettings(prev => ({ ...prev, voice: data.voice }));
       }
@@ -50,7 +50,7 @@ const VoiceSettings = () => {
     setSettings(updated);
 
     try {
-      await window.settings.saveSettings(updated);
+      await window.electronAPI.saveSettings(updated);
     } catch (error) {
       console.error('Ошибка сохранения настроек:', error);
     }

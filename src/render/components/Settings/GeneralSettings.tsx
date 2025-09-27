@@ -25,7 +25,7 @@ const GeneralSettings = () => {
 
   const loadSettings = async () => {
     try {
-      const data = await window.settings.loadSettings();
+      const data = await window.electronAPI.loadSettings();
       if (data?.ui) {
         setSettings(prev => ({ ...prev, ui: data.ui }));
       }
@@ -48,9 +48,11 @@ const GeneralSettings = () => {
     setSettings(updated);
 
     try {
-      await window.settings.saveSettings(updated);
+      console.log('📤 Отправляем настройки:', updated);
+      const result = await window.electronAPI.saveSettings(updated);
+      console.log('✅ Настройки сохранены:', result);
     } catch (error) {
-      console.error('Ошибка сохранения настроек:', error);
+      console.error('❌ Ошибка сохранения настроек:', error);
     }
   };
 

@@ -1,33 +1,21 @@
 // Общие интерфейсы для всего приложения
 
-// API интерфейс для взаимодействия между процессами
+// Расширенный интерфейс для window.electronAPI
 export interface IElectronAPI {
-  // Голосовые команды
-  startVoiceRecording: () => Promise<void>;
-  stopVoiceRecording: () => Promise<void>;
-
-  // Команды учителя
-  divideStudentsIntoGroups: (count: number) => Promise<string[][]>;
-  selectRandomStudent: () => Promise<string>;
-  openPresentation: (name: string) => Promise<void>;
-  printTasks: () => Promise<void>;
-
   // Работа с уроками
+  loadStudentsList: () => Promise<Class[]>;
   getTodayLesson: (classId: string, groupId: string) => Promise<Lesson | null>;
   createLesson: (classId: string, groupId: string, topic: string) => Promise<Lesson>;
   updateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
   updateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
-  loadStudentsList: () => Promise<Class[]>;
 
-  // Управление окном
-  minimizeWindow: () => Promise<void>;
-  closeWindow: () => Promise<void>;
+  // Команды учителя
+  divideStudents: (classId: string, groupId: string, groupCount: number) => Promise<Student[][]>;
+  selectRandomStudent: (classId: string, groupId: string) => Promise<Student>;
+  openPresentation: (name: string) => Promise<void>;
+  printTasks: () => Promise<void>;
 
-  // События
-  onRecordingStateChange: (callback: (isRecording: boolean) => void) => void;
-  removeRecordingStateListener: () => void;
-
-  // Новые методы для настроек
+  // Настройки
   loadSettings: () => Promise<AppConfig>;
   saveSettings: (settings: Partial<AppConfig>) => Promise<{ success: boolean }>;
 
@@ -41,6 +29,14 @@ export interface IElectronAPI {
 
   // Управление учениками
   addStudentToGroup: (classId: string, groupId: string, studentName: string) => Promise<{ success: boolean; student: Student }>;
+
+  // Управление окнами
+  openSettingsWindow: () => Promise<void>;
+
+  // Коммуникация между окнами
+  notifyMainWindow: (channel: string) => void;
+  onSettingsUpdated: (callback: () => void) => void;
+  removeSettingsUpdatedListener: () => void;
 }
 
 // Структура класса
