@@ -12,12 +12,16 @@ const EduAssist = () => {
   const [appData, setAppData] = useState<Class[] | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = useState<{classId: string; groupId: string} | null>(null);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const selectedGroup = useMemo((): SelectedGroup | null => {
     if (!selectedGroupIds || !appData) return null;
 
     const cls = appData.find(c => c.id === selectedGroupIds.classId);
+    if (!cls) return null;
+
     const group = cls?.groups.find(g => g.id === selectedGroupIds.groupId);
+    if (!group) return null;
 
     return cls && group ? {
       classId: cls.id,
@@ -43,8 +47,8 @@ const EduAssist = () => {
 
     const cls = appData.find(c => c.id === selectedGroupIds.classId);
     const group = cls?.groups.find(g => g.id === selectedGroupIds.groupId);
-
     const student = group?.students.find(s => s.id === studentId);
+
     return student?.name || studentId;  // s001 -> "Акмарал А."
   }, [appData, selectedGroupIds])
 
@@ -55,6 +59,7 @@ const EduAssist = () => {
     }
 
     try {
+      setError(null);
       let lesson = await window.electronAPI.getTodayLesson(selectedGroupIds.classId, selectedGroupIds.groupId);
       if (!lesson) {
         lesson = await window.electronAPI.createLesson(selectedGroupIds.classId, selectedGroupIds.groupId, 'Урок физики. Тема');
@@ -62,6 +67,7 @@ const EduAssist = () => {
       setCurrentLesson(lesson);
     } catch (error) {
       console.error("Ошибка загрузки урока: ", error);
+      setError('Не удалось загрузить урок. Попробуйте еще раз.');
       setCurrentLesson(null);
     }
   }, [selectedGroupIds])
@@ -69,6 +75,8 @@ const EduAssist = () => {
   // Оптимистичное обновление оценки
   const handleUpdateGrade = useCallback(async (lessonId: string, studentId: string, grade: number | null) => {
     if (!currentLesson || currentLesson.id !== lessonId) return;
+
+    const previousLesson = currentLesson;
 
     // Немедленно обновляем UI
     setCurrentLesson(prev => {
@@ -89,14 +97,16 @@ const EduAssist = () => {
       await window.electronAPI.updateGrade(lessonId, studentId, grade);
     } catch (error) {
       console.error('Ошибка обновления оценки:', error);
-      // В случае ошибки возвращаем предыдущее состояние
-      loadCurrentLesson();
+      setError('Не удалось сохранить оценку');
+      setCurrentLesson(previousLesson);
     }
-  }, [currentLesson, loadCurrentLesson]);
+  }, [currentLesson]);
 
   // Оптимистичное обновление посещаемости
   const handleUpdateAttendance = useCallback(async (lessonId: string, studentId: string, attendance: boolean) => {
     if (!currentLesson || currentLesson.id !== lessonId) return;
+
+    const previousLesson = currentLesson;
 
     // Немедленно обновляем UI
     setCurrentLesson(prev => {
@@ -117,10 +127,10 @@ const EduAssist = () => {
       await window.electronAPI.updateAttendance(lessonId, studentId, attendance);
     } catch (error) {
       console.error('Ошибка обновления посещаемости:', error);
-      // В случае ошибки возвращаем предыдущее состояние
-      loadCurrentLesson();
+      setError('Не удалось сохранить посещаемость')
+      setCurrentLesson(previousLesson);
     }
-  }, [currentLesson, loadCurrentLesson]);
+  }, [currentLesson]);
 
 
   // Загружаем урок при изменении выбранной группы
@@ -148,10 +158,12 @@ const EduAssist = () => {
   // Загрузка данных класса
   const loadClassData = async () => {
     try {
+      setError(null)
       const students: Class[] = await window.electronAPI.loadStudentsList();
       setAppData(students);
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
+      setError('Не удалось загрузить данный классов. Проверьте настройки.');
       setAppData([])
     }
   };
@@ -185,6 +197,23 @@ const EduAssist = () => {
 
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
+
+      {/*Добавить уведомление об ошибке*/}
+      {error && (
+        <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 z-50 max-w-md">
+          <div className="flex items-start gap-2">
+            <span className="text-xl">⚠️</span>
+            <div className="flex-1">
+              <button
+                onClick={() => setError(null)}
+                className="text-sm underline mt-1 hover:text-red-800">
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="w-80 bg-white border-r flex flex-col min-h-0">
         <Sidebar
           appData={appData}
