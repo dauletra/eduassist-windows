@@ -29,7 +29,7 @@ export function createMainWindow(): BrowserWindow {
       contextIsolation: true,
       preload: isDev()
         ? path.join(process.cwd(), 'src', 'electron', 'preload.cjs')
-        : path.join(__dirname, '..', 'preload.cjs'),
+        : path.join(process.resourcesPath, 'dist-electron', 'preload.cjs'),
       webSecurity: true
     }
   });

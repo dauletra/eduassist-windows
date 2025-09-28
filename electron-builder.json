@@ -1,6 +1,12 @@
 {
   "appId": "com.dauletrakhmankul.eduassist-windows",
   "files": ["dist-electron", "dist-react"],
+  "extraResources": [
+    {
+      "from": "src/electron/preload.cjs",
+      "to": "dist-electron/preload.cjs"
+    }
+  ],
   "icon": "./desktopIcon.png",
   "win": {
     "target": "portable"

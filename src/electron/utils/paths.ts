@@ -13,7 +13,8 @@ export function getUserDataPath(): string {
     return path.join(app.getPath('downloads'), 'eduassist-windows-files');
   }
 
-  return path.join(app.getPath('userData'), 'data');
+  // return path.join(app.getPath('userData'), 'data');
+  return path.join(app.getPath('downloads'), 'eduassist-windows-files');
 }
 
 /**
