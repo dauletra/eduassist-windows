@@ -38,29 +38,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     notifyMainWindow: (channel) => ipcRenderer.send('notify-main-window', channel),
     onSettingsUpdated: (callback) => ipcRenderer.on('settings-updated', callback),
     removeSettingsUpdatedListener: () => ipcRenderer.removeAllListeners('settings-updated'),
-});
 
-// API для голосового ассистента (оставляем для совместимости)
-contextBridge.exposeInMainWorld('voiceAssistant', {
-    startListening: () => ipcRenderer.invoke('start-voice-listening'),
-    stopListening: () => ipcRenderer.invoke('stop-voice-listening'),
-    divideStudentsIntoGroups: (count) => ipcRenderer.invoke('divide-students', count),
-    selectRandomStudent: () => ipcRenderer.invoke('select-random-student'),
-    setGrade: (studentName, grade) => ipcRenderer.invoke('set-grade', studentName, grade),
-    openPresentation: (name) => ipcRenderer.invoke('open-presentation', name),
-    printTasks: () => ipcRenderer.invoke('print-tasks'),
-    onVoiceCommand: (callback) => ipcRenderer.on('voice-command', (_event, command) => callback(command)),
-    onListeningStateChanged: (callback) => ipcRenderer.on('listening-state-changed', (_event, isListening) => callback(isListening)),
-    onStudentSelected: (callback) => ipcRenderer.on('student-selected', (_event, student) => callback(student)),
-    onGroupsDivided: (callback) => ipcRenderer.on('groups-divided', (_event, groups) => callback(groups)),
-    removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
-});
-
-// API для состояния приложения
-contextBridge.exposeInMainWorld('appState', {
-    getState: () => ipcRenderer.invoke('get-app-state'),
-    onStateUpdate: (callback) => ipcRenderer.on('state-update', (_event, state) => callback(state)),
-    onAnimationChange: (callback) => ipcRenderer.on('animation-change', (_event, animationType) => callback(animationType)),
+    // Голосовой ассистент
+    startVoiceListening: () => ipcRenderer.invoke('start-voice-listening'),
+    stopVoiceListening: () => ipcRenderer.invoke('stop-voice-listening'),
+    onVoiceCommand: (callback) => ipcRenderer.on('voice-command', (_event, cmd) => callback(cmd)),
+    onListeningStateChanged: (callback) => ipcRenderer.on('listening-state-changed', (_event, state) => callback(state)),
 });
 
 console.log('✅ Preload Script Loaded');
