@@ -12,6 +12,7 @@ const EduAssist = () => {
   const [appData, setAppData] = useState<Class[] | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = useState<{classId: string; groupId: string} | null>(null);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
+  const [allLessons, setAllLessons] = useState<Lesson[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const selectedGroup = useMemo((): SelectedGroup | null => {
@@ -55,20 +56,27 @@ const EduAssist = () => {
   const loadCurrentLesson = useCallback(async () => {
     if (!selectedGroupIds) {
       setCurrentLesson(null);
+      setAllLessons([]);
       return;
     }
 
     try {
       setError(null);
+
+      const lessons = await window.electronAPI.getAllLessons(selectedGroupIds.classId, selectedGroupIds.groupId);
+      setAllLessons(lessons);
+
       let lesson = await window.electronAPI.getTodayLesson(selectedGroupIds.classId, selectedGroupIds.groupId);
       if (!lesson) {
         lesson = await window.electronAPI.createLesson(selectedGroupIds.classId, selectedGroupIds.groupId, 'Урок физики. Тема');
+        setAllLessons(prev => [...prev, lesson]);
       }
       setCurrentLesson(lesson);
     } catch (error) {
       console.error("Ошибка загрузки урока: ", error);
       setError('Не удалось загрузить урок. Попробуйте еще раз.');
       setCurrentLesson(null);
+      setAllLessons([]);
     }
   }, [selectedGroupIds])
 
@@ -184,6 +192,10 @@ const EduAssist = () => {
     });
   };
 
+  const handleLessonChange = (lesson: Lesson) => {
+    setCurrentLesson(lesson);
+  }
+
   // Обработчик возврата к выбору групп
   const handleBackToGroups = () => {
     setSelectedGroupIds(null);
@@ -220,9 +232,11 @@ const EduAssist = () => {
           loading={loading}
           selectedGroup={selectedGroup}
           currentLesson={currentLesson}
+          allLessons={allLessons}
           getStudentName={getStudentName}
           onGroupSelect={handleGroupSelect}
           onBackToGroups={handleBackToGroups}
+          onLessonChange={handleLessonChange}
           onUpdateGrade={handleUpdateGrade}
           onUpdateAttendance={handleUpdateAttendance}
           onSettingsUpdate={handleSettingsUpdate}

@@ -9,9 +9,11 @@ interface SidebarProps {
   loading: boolean;
   selectedGroup: SelectedGroup | null;
   currentLesson: Lesson | null;
+  allLessons: Lesson[];
   getStudentName: (name: string) => string;
   onGroupSelect: (groupId: string) => void;
   onBackToGroups: () => void;
+  onLessonChange: (lesson: Lesson) => void;
   onUpdateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
   onUpdateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
   onSettingsUpdate: () => void;
@@ -22,9 +24,11 @@ const Sidebar = ({
   loading, 
   selectedGroup,
   currentLesson,
+  allLessons,
   getStudentName,
   onGroupSelect,
   onBackToGroups,
+  onLessonChange,
   onUpdateGrade,
   onUpdateAttendance,
 }: SidebarProps) => {
@@ -53,8 +57,10 @@ const Sidebar = ({
               <StudentJournal
                 selectedGroup={selectedGroup}
                 currentLesson={currentLesson}
+                allLessons={allLessons}
                 getStudentName={getStudentName}
                 onBack={onBackToGroups}
+                onLessonChange={onLessonChange}
                 onUpdateGrade={onUpdateGrade}
                 onUpdateAttendance={onUpdateAttendance}
               />

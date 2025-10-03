@@ -1,13 +1,15 @@
 // import {type Dispatch, type SetStateAction} from 'react';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, MessageSquare, UserX } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MoreHorizontal, MessageSquare, UserX } from 'lucide-react';
 import type {SelectedGroup, Lesson } from '../types';
 
 interface StudentJournalProps {
   selectedGroup: SelectedGroup;
   currentLesson: Lesson;
+  allLessons: Lesson[];
   getStudentName: (studentId: string) => string;
   onBack: () => void;
+  onLessonChange: (lesson: Lesson) => void;
   onUpdateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
   onUpdateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
 }
@@ -15,17 +17,33 @@ interface StudentJournalProps {
 const StudentJournal = ({ 
   selectedGroup, 
   currentLesson,
+  allLessons,
   getStudentName,
   onBack,
+  onLessonChange,
   onUpdateGrade,
   onUpdateAttendance,
 }: StudentJournalProps) => {
 
-  const [saving, setSaving] = useState<boolean>(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left?: number; right?: number } | null>(null);
   // const [localGrades, setLocalGrades] = useState<{[studentId: string]: string}>({});
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  const currentLessonIndex = useMemo(() => {
+    return allLessons.findIndex(l => l.id === currentLesson.id);
+  }, [allLessons, currentLesson.id]);
+
+  const canGoPrevious = currentLessonIndex > 0;
+  const canGoNext = currentLessonIndex < allLessons.length - 1;
+
+  // Форматируем дату урока
+  const lessonDate = useMemo(() => {
+    return new Date(currentLesson.date).toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+    });
+  }, [currentLesson.date])
 
   // Мемоизируем студентов с их текущими оценками
   const studentsWithGrades = useMemo(() => {
@@ -124,12 +142,6 @@ const StudentJournal = ({
     setMenuPosition(null);
   }, []);
 
-  const handleSave = useCallback(() => {
-    setSaving(true);
-    console.log('Сохранение завершено');
-    setTimeout(() => setSaving(false), 1000);
-  }, []);
-
   return (
     <div className="flex flex-col h-full">
       {/* Заголовок с навигацией */}
@@ -152,17 +164,37 @@ const StudentJournal = ({
         <div className="flex items-center justify-between">
           <h4 className="font-medium text-gray-700">Ученики ({currentLesson.students.length})</h4>
           <div className="flex items-center gap-2">
-            <button 
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+            <button
+              onClick={() =>{
+                if (canGoPrevious) {
+                  onLessonChange(allLessons[currentLessonIndex - 1]);
+                }
+              }}
+              disabled={!canGoPrevious}
+              className={`transition-colors ${
+                canGoPrevious
+                  ? 'text-gray-600 hover:text-gray-800'
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
               aria-label="Предыдущий день"
             >
               <ChevronLeft size={16} />
             </button>
             <span className="text-xs text-gray-500 min-w-20 text-center">
-              Сегодня
+              {lessonDate}
             </span>
-            <button 
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+            <button
+              onClick={() => {
+                if (canGoNext) {
+                  onLessonChange(allLessons[currentLessonIndex + 1]);
+                }
+              }}
+              disabled={!canGoNext}
+              className={`transition-colors ${
+                canGoNext
+                  ? 'text-gray-600 hover:text-gray-800'
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
               aria-label="Следующий день"
             >
               <ChevronRight size={16} />
@@ -289,24 +321,6 @@ const StudentJournal = ({
         </div>
       </div>
 
-      {/* Действия с журналом */}
-      <div className="p-4 border-t bg-gray-50 min-h-28 flex flex-col">
-        <div className="space-y-3 mt-auto">
-          {saving && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <RefreshCw size={16} className="animate-spin" />
-              Изменения сохраняются...
-            </div>
-          )}
-
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 transition-colors font-medium"
-          >
-            Сохранить изменения
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

@@ -37,5 +37,10 @@ export function registerLessonHandlers(): void {
     return result;
   });
 
+  ipcMain.handle('get-all-lessons', async (_event, classId: string, groupId: string): Promise<Lesson[]> => {
+    const lessons = lessonService.getLessonsByGroup(classId, groupId);
+    return lessons.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  })
+
   console.log('📚 Lesson handlers зарегистрированы');
 }

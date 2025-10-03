@@ -6,6 +6,7 @@ export interface IElectronAPI {
   loadStudentsList: () => Promise<Class[]>;
   getTodayLesson: (classId: string, groupId: string) => Promise<Lesson | null>;
   createLesson: (classId: string, groupId: string, topic: string) => Promise<Lesson>;
+  getAllLessons: (classId: string,groupId: string) => Promise<Lesson[]>;
   updateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
   updateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
 
