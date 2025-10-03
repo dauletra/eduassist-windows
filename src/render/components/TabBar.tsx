@@ -62,7 +62,7 @@ const TabBar = ({ selectedGroup, currentLesson, groupData, className }: TabBarPr
                 groupData={groupData}
               />
             )}
-            {activeTab === 'files' && <FilesTab />}
+            {activeTab === 'files' && <FilesTab selectedGroup={selectedGroup} />}
             {activeTab === 'devices' && <DevicesTab />}
           </div>
         )}

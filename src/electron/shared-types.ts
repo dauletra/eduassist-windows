@@ -10,6 +10,14 @@ export interface IElectronAPI {
   updateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
   updateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
 
+  // Поурочные планы
+  selectLessonPlansFolder: () => Promise<string | null>;
+  saveLessonPlansPath: (path: string) => Promise<boolean>;
+  getLessonPlansPath: () => Promise<string>;
+  scanLessonPlans: (basePath: string) => Promise<ClassFolder[]>;
+  getCurrentClass: () => Promise<string>;
+  getLessonFiles: (lessonPath: string) => Promise<FileItem[]>;
+
   // Команды учителя
   divideStudents: (classId: string, groupId: string, groupCount: number) => Promise<Student[][]>;
   selectRandomStudent: (classId: string, groupId: string) => Promise<Student>;
@@ -78,6 +86,28 @@ export interface LessonStudent {
   grade: number | null;
 }
 
+export interface LessonFolder {
+  name: string;
+  path: string;
+  week: number;
+  lessonNumber: number;
+  title?: string;
+}
+
+export interface ClassFolder {
+  name: string;
+  path: string;
+  lessons: LessonFolder[];
+}
+
+export interface FileItem {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  extension?: string;
+  size?: number;
+}
+
 // Интерфейс для конфликтов между студентами (только парные)
 export interface StudentConflict {
   students: [string, string]; // Ровно 2 ID студентов
@@ -135,6 +165,7 @@ export interface AppConfig {
     tasksTemplatesDir: string;
     journalFile: string;
     configFile: string;
+    lessonPlansDir: string;
   };
 
   // Настройки интерфейса

@@ -37,7 +37,8 @@ export const defaultConfig: AppConfig = {
     presentationsDir: 'presentations',
     tasksTemplatesDir: 'templates',
     journalFile: 'journal.json',
-    configFile: 'config.json'
+    configFile: 'config.json',
+    lessonPlansDir: ''
   },
 
   ui: {
@@ -100,27 +101,6 @@ export const voiceCommands = {
     'печать задач',
     'напечатай задания'
   ]
-} as const;
-
-/**
- * Настройки презентаций
- */
-export const presentationTemplates = {
-  'первый закон ньютона': {
-    name: 'Первый закон Ньютона',
-    path: 'physics/newton-first-law.pptx',
-    description: 'Закон инерции'
-  },
-  'второй закон ньютона': {
-    name: 'Второй закон Ньютона',
-    path: 'physics/newton-second-law.pptx',
-    description: 'F = ma'
-  },
-  'кинетическая энергия': {
-    name: 'Кинетическая энергия',
-    path: 'physics/kinetic-energy.pptx',
-    description: 'Энергия движения'
-  }
 } as const;
 
 console.log('⚙️ Конфигурация приложения загружена');

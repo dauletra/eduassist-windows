@@ -26,6 +26,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     updateClass: (classId, updates) => ipcRenderer.invoke('update-class', classId, updates),
     deleteClass: (classId) => ipcRenderer.invoke('delete-class', classId),
 
+    // Поурочные планы
+    selectLessonPlansFolder: () => ipcRenderer.invoke('select-lesson-plans-folder'),
+    saveLessonPlansPath: (path) => ipcRenderer.invoke('save-lesson-plans-path', path),
+    getLessonPlansPath: () => ipcRenderer.invoke('get-lesson-plans-path'),
+    scanLessonPlans: (basePath) => ipcRenderer.invoke('scan-lesson-plans', basePath),
+    getCurrentClass: () => ipcRenderer.invoke('get-current-class'),
+    getLessonFiles: (lessonPath) => ipcRenderer.invoke('get-lesson-files', lessonPath),
+
     // Управление группами
     addGroupToClass: (classId, groupName) => ipcRenderer.invoke('add-group-to-class', classId, groupName),
 

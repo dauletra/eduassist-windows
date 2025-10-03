@@ -10,6 +10,7 @@ import { registerStudentHandlers } from './handlers/student.handler.js';
 import { registerTeacherHandlers } from './handlers/teacher.handler.js';
 import { registerWindowHandlers } from './handlers/window.handler.js';
 import { registerVoiceHandlers } from './handlers/voice.handler.js';
+import {registerLessonPlansHandlers} from "./handlers/lesson-plans.handler.js";
 
 /**
  * Инициализация и регистрация всех IPC обработчиков
@@ -23,6 +24,7 @@ export function setupElectronAPI(mainWindow: BrowserWindow): void {
   // Регистрация всех обработчиков
   registerSettingsHandlers();
   registerLessonHandlers();
+  registerLessonPlansHandlers()
   registerStudentHandlers();
   registerTeacherHandlers();
   registerWindowHandlers(mainWindow);
