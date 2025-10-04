@@ -2,7 +2,11 @@ import { useState, useEffect } from "react";
 import { Printer, Mic, Volume2, CheckCircle2, XCircle } from 'lucide-react'
 import type { Device, DeviceSettings } from '../types'
 
-const DevicesTab = () => {
+interface DevicesTabProps {
+  isActive: boolean;
+}
+
+const DevicesTab = ({ isActive }: DevicesTabProps) => {
   const [printers, setPrinters] = useState<Device[]>([]);
   const [audioInputs, setAudioInputs] = useState<Device[]>([]);
   const [audioOutputs, setAudioOutputs] = useState<Device[]>([]);
@@ -12,6 +16,12 @@ const DevicesTab = () => {
     loadDevices();
     loadDefaultDevices();
   }, []);
+
+  useEffect(() => {
+    if (isActive) {
+      loadDevices();
+    }
+  }, [isActive]);
 
   const loadDefaultDevices = async () => {
     try {

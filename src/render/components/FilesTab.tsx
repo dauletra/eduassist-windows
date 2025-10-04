@@ -1,6 +1,6 @@
 import {useState, useEffect} from "react";
 import { Folder, FileText, Presentation, File, Printer } from 'lucide-react';
-import type { ClassFolder, LessonFolder, FileItem, SelectedGroup } from '../types';
+import type {ClassFolder, LessonFolder, FileItem, SelectedGroup } from '../types';
 import { Toast } from './Toast.tsx'
 
 const getSchoolWeekNumber = (date: Date): number => {
@@ -25,13 +25,14 @@ const getSchoolWeekNumber = (date: Date): number => {
 
 interface FilesTabProps {
   selectedGroup?: SelectedGroup | null;
+  selectedLesson: LessonFolder | null;
+  onLessonChange: (lesson: LessonFolder | null) => void;
 }
 
-const FilesTab = ({ selectedGroup }: FilesTabProps) => {
+const FilesTab = ({ selectedGroup, selectedLesson, onLessonChange }: FilesTabProps) => {
   const [lessonPlansPath, setLessonPlansPath] = useState<string[]>([]);
   const [classes, setClasses] = useState<ClassFolder[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedLesson, setSelectedLesson] = useState<LessonFolder | null>(null);
   const [lessonFiles, setLessonFiles] = useState<FileItem[]>([]);
   const [loadingFiles, setLoadingFiles] = useState<boolean>(false);
   const [printingFileId, setPrintingFileId] = useState<string | null>(null);
@@ -67,8 +68,10 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
         return folderName === normalizedClassName;
       });
       if (matchedClass) {
+        const classChanged = selectedClass !== matchedClass.name;
         setSelectedClass(matchedClass.name);
-        if (matchedClass.lessons.length > 0) {
+
+        if (classChanged && matchedClass.lessons.length > 0) {
           // Определяем текущую неделю
           const currentWeek = getSchoolWeekNumber(new Date());
           console.log('📅 Текущая учебная неделя:', currentWeek);
@@ -91,13 +94,13 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
               lessonToSelect = matchedClass.lessons[0];
             }
           }
-          setSelectedLesson(lessonToSelect);
+          onLessonChange(lessonToSelect);
         }
       } else {
         console.log('❌ Класс не найден! Проверьте совпадение названий');
       }
     }
-  }, [selectedGroup, classes]);
+  }, [selectedGroup, classes, onLessonChange, selectedClass]);
 
   // Загрузка файлов урока при выборе урока
   useEffect(() => {
@@ -147,7 +150,7 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
         if (matchedClass) {
           setSelectedClass(matchedClass);
           if (matchedClass.lessons.length > 0) {
-            setSelectedLesson(matchedClass.lessons[0]);
+            onLessonChange(matchedClass.lessons[0]);
           }
         }
       }
@@ -161,15 +164,15 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
     setSelectedClass(className);
     const classData = classes.find(c => c.name === className);
     if (classData && classData.lessons.length > 0) {
-      setSelectedLesson(classData.lessons[0]);
+      onLessonChange(classData.lessons[0]);
     } else {
-      setSelectedLesson(null);
+      onLessonChange(null);
     }
   };
 
   // Выбор урока
   const handleSelectLesson = (lesson: LessonFolder) => {
-    setSelectedLesson(lesson);
+    onLessonChange(lesson);
   };
 
   // Навигация по урокам

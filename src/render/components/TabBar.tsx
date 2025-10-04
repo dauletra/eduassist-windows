@@ -3,7 +3,7 @@ import { FileText, Dice1, Monitor } from "lucide-react";
 import FilesTab from "./FilesTab.tsx";
 import DevicesTab from "./DevicesTab.tsx";
 import RandomizerTab from "./RandomizerTab";
-import type { SelectedGroup, Lesson, Group } from "../types";
+import type {SelectedGroup, Lesson, Group, LessonFolder} from "../types";
 
 interface TabBarProps {
   selectedGroup: SelectedGroup | null;
@@ -14,6 +14,7 @@ interface TabBarProps {
 
 const TabBar = ({ selectedGroup, currentLesson, groupData, className }: TabBarProps) => {
   const [activeTab, setActiveTab] = useState('randomizer');
+  const [selectedLesson, setSelectedLesson] = useState<LessonFolder | null>(null);
 
   const tabs = [
     { id: "randomizer", icon: Dice1, label: "Рандомайзер" },
@@ -55,15 +56,23 @@ const TabBar = ({ selectedGroup, currentLesson, groupData, className }: TabBarPr
           </div>
         ) : (
           <div className="h-full overflow-y-auto">
-            {activeTab === 'randomizer' && (
+            <div className={activeTab === 'randomizer' ? '' : 'hidden'}>
               <RandomizerTab
                 selectedGroup={selectedGroup}
                 currentLesson={currentLesson}
                 groupData={groupData}
               />
-            )}
-            {activeTab === 'files' && <FilesTab selectedGroup={selectedGroup} />}
-            {activeTab === 'devices' && <DevicesTab />}
+            </div>
+            <div className={activeTab === 'files' ? '' : 'hidden'}>
+              <FilesTab
+                selectedGroup={selectedGroup}
+                selectedLesson={selectedLesson}
+                onLessonChange={setSelectedLesson}
+              />
+            </div>
+            <div className={activeTab === 'devices' ? '' : 'hidden'}>
+              <DevicesTab isActive={activeTab === 'devices'} />
+            </div>
           </div>
         )}
       </div>
