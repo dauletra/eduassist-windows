@@ -201,14 +201,14 @@ export function registerSettingsHandlers(): void {
       // Получаем аудио устройства (заглушка, так как Electron не предоставляет прямого API)
       // В будущем можно использовать navigator.mediaDevices.enumerateDevices() через renderer
       // Получаем реальные статусы принтеров через Windows API
-      const printersStatus = await printerService.getPrintersStatus();
+      const printersStatus = await printerService.getPrintersStatus(false);
 
       const audioInputs: any[] = [];
       const audioOutputs: any[] = [];
 
-      return {
-        printers: printers.map((p: any) => {
-          // Проверяем реальный статус из Windows
+      const filteredPrinters = printers
+        .filter(p => printersStatus.has(p.name))
+        .map((p: any) => {
           const isAvailable = printersStatus.get(p.name) ?? false;
 
           return {
@@ -217,7 +217,11 @@ export function registerSettingsHandlers(): void {
             isDefault: p.name === settings.devices?.defaultPrinter,
             isAvailable: isAvailable
           };
-        }),
+        });
+
+
+      return {
+        printers: filteredPrinters,
         audioInputs: audioInputs.map((d: any) => ({
           id: d.deviceId,
           name: d.label || d.deviceId,

@@ -31,6 +31,7 @@ export function registerTeacherHandlers(): void {
       await tasksService.printPDF(filePath);
     } catch (error) {
       console.error('Ошибка печати PDF файла', error)
+      throw error;
     }
   })
 

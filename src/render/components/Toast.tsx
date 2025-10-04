@@ -27,9 +27,17 @@ export const Toast = ({ message, type, onClose, duration = 3000 }: ToastProps) =
   };
 
   return (
-    <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${bgColors[type]} animate-slide-in`}>
+    <div className={`fixed top-4 right-4 z-50 flex items-start gap-3 px-4 py-3 rounded-lg border shadow-lg ${bgColors[type]} animate-slide-in max-w-md`}>
       {icons[type]}
-      <span className="text-sm font-medium text-gray-800">{message}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-800 break-words">{message}</p>
+      </div>
+      <button
+        onClick={onClose}
+        className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+      >
+        ×
+      </button>
     </div>
   );
 };

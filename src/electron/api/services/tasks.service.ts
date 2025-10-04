@@ -4,6 +4,7 @@ import { BrowserWindow } from 'electron';
 import { fileExists } from '../../utils/file-utils.js';
 import { configService } from './config.service.js';
 import { hasMainWindow, getMainWindow } from "../../windows/main-window.js";
+import {printerService} from "./printer.service.js";
 
 
 export class TasksService {
@@ -25,6 +26,7 @@ export class TasksService {
       // Получаем настройки принтера по умолчанию
       const settings = configService.loadConfig();
       const defaultPrinter = settings.devices?.defaultPrinter;
+      const printersStatus = await printerService.getPrintersStatus(false);
 
       // Получаем список принтеров из главного окна
       const mainWindow = getMainWindow();
@@ -32,22 +34,41 @@ export class TasksService {
 
       // Если указан принтер по умолчанию, проверяем его доступность
       if (defaultPrinter) {
-        const printer = printers.find(p => p.name === defaultPrinter);
+        const isDefaultAvailable = printersStatus.get(defaultPrinter);
 
-        if (!printer) {
-          throw new Error(`Принтер "${defaultPrinter}" не найден`);
-        }
+        if (!isDefaultAvailable) {
+          // Ищем альтернативный доступный принтер
+          const availablePrinters = Array.from(printersStatus.entries())
+            .filter(([_, isAvailable]) => isAvailable)
+            .map(([name]) => name);
 
-        if (printer.status !== 0) {
-          throw new Error(`Принтер "${defaultPrinter}" недоступен или отключен`);
+          if (availablePrinters.length > 0) {
+            throw new Error(
+              `Принтер по умолчанию "${defaultPrinter}" недоступен. ` +
+              `Доступные принтеры: ${availablePrinters.join(', ')}. ` +
+              `Измените принтер по умолчанию в настройках устройств.`
+            );
+          } else {
+            throw new Error(
+              `Принтер по умолчанию "${defaultPrinter}" недоступен и нет других доступных принтеров`
+            );
+          }
         }
       } else {
-        // Если принтер не указан, проверяем наличие хотя бы одного доступного
-        const availablePrinters = printers.filter(p => p.status === 0);
+        // Если принтер по умолчанию не установлен
+        const availablePrinters = Array.from(printersStatus.entries())
+          .filter(([_, isAvailable]) => isAvailable)
+          .map(([name]) => name);
 
         if (availablePrinters.length === 0) {
           throw new Error('Нет доступных принтеров');
         }
+
+        throw new Error(
+          `Принтер по умолчанию не настроен. ` +
+          `Доступные принтеры: ${availablePrinters.join(', ')}. ` +
+          `Установите принтер по умолчанию в настройках устройств.`
+        );
       }
 
       // Создаем скрытое окно для загрузки PDF
@@ -84,33 +105,27 @@ export class TasksService {
         printOptions.deviceName = defaultPrinter;
       }
 
-      // Отправляем на печать с таймаутом
-      // Отправляем на печать с таймаутом
-      await Promise.race([
-        new Promise<void>((resolve, reject) => {
-          win!.webContents.print(printOptions, (success, errorType) => {
-            if (!success) {
-              console.error('❌ Ошибка печати:', errorType);
-              reject(new Error(`Ошибка печати: ${errorType || 'неизвестная ошибка'}`));
-            } else {
-              console.log('✅ PDF успешно отправлен на печать:', filePath);
-              resolve();
-            }
-          });
-        }),
-        new Promise<void>((_, reject) =>
-          setTimeout(() => reject(new Error('Превышено время ожидания печати')), 10000)
-        )
-      ]);
+      // Отправляем на печать
+      win.webContents.print(printOptions, (success, errorType) => {
+        if (!success) {
+          console.error('❌ Ошибка печати:', errorType);
+        } else {
+          console.log('✅ PDF успешно отправлен на печать:', filePath);
+        }
+
+        // Закрываем окно после отправки на печать
+        if (win && !win.isDestroyed()) {
+          win.close();
+        }
+      });
 
     } catch (error) {
       console.error('❌ Ошибка печати PDF:', error);
-      throw error;
-    } finally {
       // Всегда закрываем окно
       if (win && !win.isDestroyed()) {
         win.close();
       }
+      throw error;
     }
   }
 }

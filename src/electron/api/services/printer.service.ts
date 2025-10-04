@@ -7,7 +7,7 @@ export class PrinterService {
   /**
    * Получить статус принтеров через WMI
    */
-  async getPrintersStatus(): Promise<Map<string, boolean>> {
+  async getPrintersStatus(includeVirtual: boolean = true): Promise<Map<string, boolean>> {
     const printersStatus = new Map<string, boolean>();
 
     try {
@@ -41,8 +41,6 @@ export class PrinterService {
 
       const printerArray = Array.isArray(printers) ? printers : [printers];
 
-      console.log('\n========== СТАТУСЫ ПРИНТЕРОВ ==========');
-
       printerArray.forEach((printer: any) => {
         if (!printer.Name) return;
 
@@ -52,6 +50,11 @@ export class PrinterService {
           portName.includes('SHRFAX:') ||
           portName.includes('Microsoft.Office') ||
           portName.includes('FILE:');
+
+        // Пропускаем виртуальные принтеры если includeVirtual = false
+        if (!includeVirtual && isVirtual) {
+          return;
+        }
 
         let isAvailable = false;
 
@@ -75,8 +78,6 @@ export class PrinterService {
   // PrinterState: ${printer.PrinterState}
   // ✅ Доступен: ${isAvailable}`);
       });
-
-      console.log('========================================\n');
 
     } catch (error: any) {
       console.error('❌ Ошибка WMI:', error.message);

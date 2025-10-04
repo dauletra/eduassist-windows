@@ -195,9 +195,31 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
       await window.electronAPI.printFile(file.path);
 
       setToast({ message: `Файл "${file.name}" отправлен на печать`, type: 'success' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка печати файла:', error);
-      setToast({ message: `Ошибка печати "${file.name}"`, type: 'error' });
+
+      // Извлекаем человекочитаемое сообщение об ошибке
+      let errorMessage = 'Ошибка печати';
+
+      if (error && error.message) {
+        errorMessage = error.message;
+
+        // Убираем технический префикс Electron IPC
+        // "Error invoking remote method 'print-file': Error: Текст ошибки"
+        errorMessage = errorMessage
+          .replace(/^Error invoking remote method '[^']+': Error:\s*/i, '')
+          .replace(/^Error:\s*/i, '');
+      }
+
+      // Убираем технические префиксы если есть
+      errorMessage = errorMessage.replace(/^Error:\s*/i, '');
+
+      console.log('Отображаемое сообщение:', errorMessage);
+
+      setToast({
+        message: errorMessage,
+        type: 'error'
+      });
     } finally {
       setPrintingFileId(null);
     }
