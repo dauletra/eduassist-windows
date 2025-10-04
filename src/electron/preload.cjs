@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     printTasks: () => ipcRenderer.invoke('print-tasks'),
     printFile: (filePath) => ipcRenderer.invoke('print-file', filePath),
     openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
-
+    getDevices: () => ipcRenderer.invoke('get-devices'),
 
     // Настройки - ИСПРАВЛЕНО!
     loadSettings: () => ipcRenderer.invoke('load-settings'),

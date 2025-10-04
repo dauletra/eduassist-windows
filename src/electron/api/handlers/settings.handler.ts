@@ -1,9 +1,11 @@
 // src/electron/api/handlers/settings.handler.ts
 
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import type { Class, Group, Student } from '../../shared-types.js';
 import { configService } from '../services/config.service.js';
 import { studentService } from '../services/student.service.js';
+import { printerService } from '../services/printer.service.js';
+import { hasMainWindow, getMainWindow } from "../../windows/main-window.js";
 
 /**
  * Регистрация обработчиков настроек
@@ -179,6 +181,61 @@ export function registerSettingsHandlers(): void {
       throw error;
     }
   });
+
+  ipcMain.handle('get-devices', async() => {
+    try {
+      const settings = configService.loadConfig();
+
+      let printers: any[] = [];
+      try {
+        if (hasMainWindow()) {
+          const mainWindow = getMainWindow();
+          printers = await mainWindow.webContents.getPrintersAsync();
+        } else {
+          console.warn('⚠️ Главное окно не инициализировано');
+        }
+      } catch (error) {
+        console.error('❌ Ошибка получения принтеров:', error);
+      }
+
+      // Получаем аудио устройства (заглушка, так как Electron не предоставляет прямого API)
+      // В будущем можно использовать navigator.mediaDevices.enumerateDevices() через renderer
+      // Получаем реальные статусы принтеров через Windows API
+      const printersStatus = await printerService.getPrintersStatus();
+
+      const audioInputs: any[] = [];
+      const audioOutputs: any[] = [];
+
+      return {
+        printers: printers.map((p: any) => {
+          // Проверяем реальный статус из Windows
+          const isAvailable = printersStatus.get(p.name) ?? false;
+
+          return {
+            id: p.name,
+            name: p.displayName || p.name,
+            isDefault: p.name === settings.devices?.defaultPrinter,
+            isAvailable: isAvailable
+          };
+        }),
+        audioInputs: audioInputs.map((d: any) => ({
+          id: d.deviceId,
+          name: d.label || d.deviceId,
+          isDefault: d.deviceId === settings.devices?.defaultAudioInput,
+          isAvailable: true
+        })),
+        audioOutputs: audioOutputs.map((d: any) => ({
+          id: d.deviceId,
+          name: d.label || d.deviceId,
+          isDefault: d.deviceId === settings.devices?.defaultAudioOutput,
+          isAvailable: true
+        }))
+      };
+    } catch (error) {
+      console.error('❌ Ошибка получения устройств:', error);
+      throw error;
+    }
+  })
 
   console.log('📋 Settings handlers зарегистрированы');
 }

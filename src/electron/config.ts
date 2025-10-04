@@ -41,6 +41,12 @@ export const defaultConfig: AppConfig = {
     lessonPlansDir: ''
   },
 
+  devices: {
+    defaultPrinter: undefined,
+    defaultAudioInput: undefined,
+    defaultAudioOutput: undefined
+  },
+
   ui: {
     theme: 'light',
     language: 'ru',

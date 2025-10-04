@@ -1,6 +1,7 @@
 import {useState, useEffect} from "react";
 import { Folder, FileText, Presentation, File, Printer } from 'lucide-react';
 import type { ClassFolder, LessonFolder, FileItem, SelectedGroup } from '../types';
+import { Toast } from './Toast.tsx'
 
 const getSchoolWeekNumber = (date: Date): number => {
   const year = date.getFullYear();
@@ -33,6 +34,8 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
   const [selectedLesson, setSelectedLesson] = useState<LessonFolder | null>(null);
   const [lessonFiles, setLessonFiles] = useState<FileItem[]>([]);
   const [loadingFiles, setLoadingFiles] = useState<boolean>(false);
+  const [printingFileId, setPrintingFileId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Загрузка сохраненного пути при монтировании
   useEffect(() => {
@@ -185,10 +188,18 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
   // Печать файла
   const handlePrintFile = async (file: FileItem) => {
     try {
+      setPrintingFileId(file.path);
+      setToast({message: `Печать "${file.name}"...`, type: 'info'});
+
       console.log('Печать файла:', file.path);
       await window.electronAPI.printFile(file.path);
+
+      setToast({ message: `Файл "${file.name}" отправлен на печать`, type: 'success' });
     } catch (error) {
       console.error('Ошибка печати файла:', error);
+      setToast({ message: `Ошибка печати "${file.name}"`, type: 'error' });
+    } finally {
+      setPrintingFileId(null);
     }
   };
 
@@ -360,10 +371,24 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
                           {(file.extension === '.pdf') && (
                             <button
                               onClick={() => handlePrintFile(file)}
-                              className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded hover:bg-green-200 transition-colors flex items-center gap-1.5"
+                              disabled={printingFileId === file.path}
+                              className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+                                printingFileId === file.path
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+                              }`}
                             >
-                              <Printer size={14} />
-                              Печать
+                              {printingFileId === file.path ? (
+                                <>
+                                  <div className="w-3.5 h-3.5 border-2 border-green-700 border-t-transparent rounded-full animate-spin" />
+                                  Печать...
+                                </>
+                              ) : (
+                                <>
+                                  <Printer size={14} />
+                                  Печать
+                                </>
+                              )}
                             </button>
                           )}
                         </div>
@@ -385,6 +410,14 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
             <p>Выберите папку с поурочными планами</p>
           </div>
         </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );

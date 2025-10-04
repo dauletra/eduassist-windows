@@ -23,6 +23,11 @@ export interface IElectronAPI {
   selectRandomStudent: (classId: string, groupId: string) => Promise<Student>;
   openPresentation: (name: string) => Promise<void>;
   printTasks: () => Promise<void>;
+  getDevices: () => Promise<{
+    printers: Device[];
+    audioInputs: Device[];
+    audioOutputs: Device[];
+  }>;
 
   // Настройки
   loadSettings: () => Promise<AppConfig>;
@@ -118,6 +123,21 @@ export const SUPPORTED_FILE_TYPES = {
 
 export type SupportedFileType = keyof typeof SUPPORTED_FILE_TYPES;
 
+export interface Device {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  isAvailable: boolean;
+}
+
+export interface DeviceSettings {
+  devices: {
+    defaultPrinter?: string;
+    defaultAudioInput?: string;
+    defaultAudioOutput?: string;
+  };
+}
+
 // Интерфейс для конфликтов между студентами (только парные)
 export interface StudentConflict {
   students: [string, string]; // Ровно 2 ID студентов
@@ -176,6 +196,13 @@ export interface AppConfig {
     journalFile: string;
     configFile: string;
     lessonPlansDir: string;
+  };
+
+  // Устройства
+  devices: {
+    defaultPrinter?: string;
+    defaultAudioInput?: string;
+    defaultAudioOutput?: string;
   };
 
   // Настройки интерфейса
