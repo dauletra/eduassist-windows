@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     selectRandomStudent: (classId, groupId) => ipcRenderer.invoke('select-random-student', classId, groupId),
     openPresentation: (name) => ipcRenderer.invoke('open-presentation', name),
     printTasks: () => ipcRenderer.invoke('print-tasks'),
+    printFile: (filePath) => ipcRenderer.invoke('print-file', filePath),
+    openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
+
 
     // Настройки - ИСПРАВЛЕНО!
     loadSettings: () => ipcRenderer.invoke('load-settings'),

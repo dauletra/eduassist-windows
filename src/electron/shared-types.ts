@@ -108,6 +108,16 @@ export interface FileItem {
   size?: number;
 }
 
+export const SUPPORTED_FILE_TYPES = {
+  presentations: ['.pptx', '.ppt'],
+  documents: ['.docx', '.doc', '.pdf'],
+  spreadsheets: ['.xlsx', '.xls'],
+  images: ['.jpg', '.jpeg', '.png', '.gif'],
+  videos: ['.mp4', '.avi', '.mov'],
+} as const;
+
+export type SupportedFileType = keyof typeof SUPPORTED_FILE_TYPES;
+
 // Интерфейс для конфликтов между студентами (только парные)
 export interface StudentConflict {
   students: [string, string]; // Ровно 2 ID студентов

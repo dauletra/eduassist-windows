@@ -41,20 +41,18 @@ export class PresentationService {
   /**
    * Открыть презентацию по имени
    */
-  async openPresentation(presentationName: string): Promise<void> {
-    const normalizedName = presentationName.toLowerCase();
-    const presentation = this.presentations[normalizedName];
-
-    if (!presentation) {
-      console.warn(`⚠️ Презентация "${presentationName}" не найдена`);
-      return;
-    }
-
+  async openPresentation(filePath: string): Promise<void> {
     try {
-      await this.openPresentationFile(presentation);
-      console.log(`✅ Презентация "${presentation.name}" открыта`);
+      const result = await shell.openPath(filePath);
+
+      if (result) {
+        console.error(`❌ Ошибка открытия файла: ${result}`);
+        throw new Error(result);
+      }
+
+      console.log(`✅ Файл открыт: ${filePath}`);
     } catch (error) {
-      console.error('❌ Ошибка открытия презентации:', error);
+      console.error('❌ Ошибка открытия файла:', error);
       throw error;
     }
   }

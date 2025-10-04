@@ -174,8 +174,9 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
 
   // Открыть файл
   const handleOpenFile = async (file: FileItem) => {
+    console.log('--- open file clicked ---')
     try {
-      await window.electronAPI.openPresentation(file.path);
+      await window.electronAPI.openFile(file.path);
     } catch (error) {
       console.error('Ошибка открытия файла:', error);
     }
@@ -185,7 +186,7 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
   const handlePrintFile = async (file: FileItem) => {
     try {
       console.log('Печать файла:', file.path);
-      // TODO: Реализовать печать
+      await window.electronAPI.printFile(file.path);
     } catch (error) {
       console.error('Ошибка печати файла:', error);
     }
@@ -201,9 +202,19 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
     if (ext === '.pptx' || ext === '.ppt') {
       return <Presentation size={20} className="text-orange-600" />;
     }
-    if (ext === '.docx' || ext === '.doc') {
+    if (ext === '.docx' || ext === '.doc' || ext === '.pdf') {
       return <FileText size={20} className="text-blue-600" />;
     }
+    if (ext === '.xlsx' || ext === '.xls') {
+      return <FileText size={20} className="text-green-600" />;
+    }
+    if (ext === '.jpg' || ext === '.jpeg' || ext === '.png' || ext === '.gif') {
+      return <File size={20} className="text-purple-600" />;
+    }
+    if (ext === '.mp4' || ext === '.avi' || ext === '.mov') {
+      return <File size={20} className="text-red-600" />;
+    }
+
     return <File size={20} className="text-gray-600" />;
   };
 
@@ -316,7 +327,7 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto pb-36">
               {lessonFiles.map((file, index) => (
                 <div
                   key={index}
@@ -346,7 +357,7 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
                             Открыть
                           </button>
 
-                          {(file.extension === '.docx' || file.extension === '.doc') && (
+                          {(file.extension === '.pdf') && (
                             <button
                               onClick={() => handlePrintFile(file)}
                               className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded hover:bg-green-200 transition-colors flex items-center gap-1.5"
@@ -375,7 +386,6 @@ const FilesTab = ({ selectedGroup }: FilesTabProps) => {
           </div>
         </div>
       )}
-      <div className="min-h-60"></div>
     </div>
   );
 };

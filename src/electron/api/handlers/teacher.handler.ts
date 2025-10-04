@@ -16,14 +16,23 @@ export function registerTeacherHandlers(): void {
     }
   });
 
-  // Печать задач
-  ipcMain.handle('print-tasks', async () => {
+  // Открытие любого файла
+  ipcMain.handle('open-file', async (_event, filePath: string) => {
     try {
-      await tasksService.generateAndPrint();
+      await presentationService.openPresentation(filePath);
     } catch (error) {
-      console.error('❌ Ошибка печати задач:', error);
+      console.error('❌ Ошибка открытия файла:', error);
     }
   });
+
+  // Печать файла
+  ipcMain.handle('print-file', async (_event, filePath: string) => {
+    try {
+      await tasksService.printPDF(filePath);
+    } catch (error) {
+      console.error('Ошибка печати PDF файла', error)
+    }
+  })
 
   console.log('👨‍🏫 Teacher handlers зарегистрированы');
 }
