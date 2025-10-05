@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import type { Lesson } from '../../shared-types.js';
+import type { Lesson, TaskStatus } from '../../shared-types.js';
 import { lessonService } from '../services/lesson.service.js';
 
 /**
@@ -33,6 +33,16 @@ export function registerLessonHandlers(): void {
     const result = lessonService.updateGrade(lessonId, studentId, grade);
     if (result) {
       console.log(`✅ Оценка обновлена: ${studentId} - ${grade ?? 'не выставлена'}`);
+    }
+    return result;
+  });
+
+  // Обновить статус задания
+  ipcMain.handle('update-task-status', async (_event, lessonId: string, studentId: string, taskIndex: number, status: TaskStatus): Promise<boolean> => {
+    const result = lessonService.updateTaskStatus(lessonId, studentId, taskIndex, status);
+    if (result) {
+      const statusNames = ['пусто', 'правильно', 'неправильно', 'половина'];
+      console.log(`✅ Статус задания обновлен: ${studentId} - задание ${taskIndex + 1}: ${statusNames[status]}`);
     }
     return result;
   });

@@ -9,6 +9,7 @@ export interface IElectronAPI {
   getAllLessons: (classId: string,groupId: string) => Promise<Lesson[]>;
   updateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
   updateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
+  updateTaskStatus: (lessonId: string, studentId: string, taskIndex: number, status: TaskStatus) => Promise<void>;
 
   // Поурочные планы
   selectLessonPlansFolder: () => Promise<string | null>;
@@ -74,6 +75,10 @@ export interface Student {
   name: string;
 }
 
+// Типы статуса задания
+export type TaskStatus = 0 | 1 | 2 | 3; // 0-пусто, 1-правильно, 2-неправильно, 3-половина
+
+
 // Структура урока
 export interface Lesson {
   id: string;
@@ -89,6 +94,7 @@ export interface LessonStudent {
   id: string;
   attendance: boolean;
   grade: number | null;
+  tasks?: TaskStatus[]; // Массив статусов заданий
 }
 
 export interface LessonFolder {

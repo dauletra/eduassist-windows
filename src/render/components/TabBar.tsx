@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { FileText, Dice1, Monitor, LayoutGrid } from "lucide-react";
+import { FileText, Dice1, Monitor, LayoutGrid, ClipboardList } from "lucide-react";
 import FilesTab from "./FilesTab.tsx";
 import DevicesTab from "./DevicesTab.tsx";
 import RandomizerTab from "./RandomizerTab";
 import { SeatingChart } from "./SeatingChart.tsx";
+import TasksTab from "./TasksTab";
 import type {SelectedGroup, Lesson, Group, LessonFolder} from "../types";
 
 interface TabBarProps {
@@ -19,6 +20,7 @@ const TabBar = ({ selectedGroup, currentLesson, groupData, className }: TabBarPr
 
   const tabs = [
     { id: 'seating', icon: LayoutGrid, label: 'Рассадка' },
+    { id: 'tasks', icon: ClipboardList, label: 'Задания' },
     { id: "randomizer", icon: Dice1, label: "Рандомайзер" },
     { id: 'files', icon: FileText, label: 'Файлы' },
     { id: 'devices', icon: Monitor, label: 'Устройства' },
@@ -60,6 +62,13 @@ const TabBar = ({ selectedGroup, currentLesson, groupData, className }: TabBarPr
           <div className="h-full overflow-y-auto">
             <div className={activeTab === 'seating' ? '' : 'hidden'}>
               <SeatingChart
+                selectedGroup={selectedGroup}
+                currentLesson={currentLesson}
+                groupData={groupData}
+              />
+            </div>
+            <div className={activeTab === 'tasks' ? '' : 'hidden'}>
+              <TasksTab
                 selectedGroup={selectedGroup}
                 currentLesson={currentLesson}
                 groupData={groupData}

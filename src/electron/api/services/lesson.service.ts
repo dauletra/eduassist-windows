@@ -1,6 +1,6 @@
 // src/electron/api/services/lesson.service.ts
 
-import type { Lesson } from '../../shared-types.js';
+import type { Lesson, TaskStatus } from '../../shared-types.js';
 import { DATA_PATHS } from '../../utils/paths.js';
 import { readJsonFile, writeJsonFile } from '../../utils/file-utils.js';
 import { studentService } from './student.service.js';
@@ -86,7 +86,8 @@ export class LessonService {
       students: group.students.map(student => ({
         id: student.id,
         attendance: true,
-        grade: null
+        grade: null,
+        tasks: []
       }))
     };
 
@@ -124,6 +125,35 @@ export class LessonService {
 
     if (student) {
       student.grade = grade;
+      this.debounceSaveJournal(journal);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Обновить статус задания ученика
+   */
+  updateTaskStatus(lessonId: string, studentId: string, taskIndex: number, status: TaskStatus): boolean {
+    const journal = this.loadJournal();
+    const lesson = journal.find(l => l.id === lessonId);
+    const student = lesson?.students.find(s => s.id === studentId);
+
+    if (student) {
+      // Инициализируем массив tasks если его нет
+      if (!student.tasks) {
+        student.tasks = [];
+      }
+
+      // Расширяем массив до нужного размера если необходимо
+      while (student.tasks.length <= taskIndex) {
+        student.tasks.push(0);
+      }
+
+      // Обновляем статус
+      student.tasks[taskIndex] = status;
+
       this.debounceSaveJournal(journal);
       return true;
     }

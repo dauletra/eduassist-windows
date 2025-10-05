@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     createLesson: (classId, groupId, topic) => ipcRenderer.invoke('create-lesson', classId, groupId, topic),
     updateAttendance: (lessonId, studentId, attendance) => ipcRenderer.invoke('update-attendance', lessonId, studentId, attendance),
     updateGrade: (lessonId, studentId, grade) => ipcRenderer.invoke('update-grade', lessonId, studentId, grade),
+    updateTaskStatus: (lessonId, studentId, taskIndex, status) => ipcRenderer.invoke('update-task-status', lessonId, studentId, taskIndex, status),
 
     // Команды учителя
     divideStudents: (classId, groupId, groupCount) => ipcRenderer.invoke('divide-students', classId, groupId, groupCount),

@@ -1,6 +1,6 @@
 // Импорт общих типов
 export type { Class, Group, Student, Lesson, LessonStudent, StudentConflict,
-  LessonFolder, ClassFolder, FileItem, Device, DeviceSettings } from '../../electron/shared-types';
+  LessonFolder, ClassFolder, FileItem, Device, DeviceSettings, TaskStatus } from '../../electron/shared-types';
 
 // UI-специфичные типы
 export interface SelectedGroup {
