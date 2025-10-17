@@ -1,23 +1,36 @@
-import React, { useState } from 'react';
-import { Mic, MicOff, WifiOff, HelpCircle, MessageCircle, Play, MessageSquare } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Mic, MicOff, WifiOff, HelpCircle, MessageCircle, Play, MessageSquare, Loader2 } from 'lucide-react';
+import { useVoiceAssistant } from '../hooks/useVoiceAssistant';
 
 export const VoiceAssistant: React.FC = () => {
-  // Конфигурация ассистента
-  const ASSISTANT_NAME = 'Galaxy'
-  const WAKE_WORD = 'Galaxy'
+  const ASSISTANT_NAME = 'Galaxy';
+  const WAKE_WORD = 'Galaxy';
 
-  const [isAssistantActive] = useState(true);
-  const [isMicWorking] = useState(true);
-  const [isInternetConnected] = useState(true);
-  const [isWaitingForKeyword] = useState(true);
-  const [isRecording] = useState(false);
-  const [lastCommand] = useState<string>('');  // Открой журнал 9 В класса
-  const [assistantQuestion] = useState<string>('');  // Какой класс открыть: 9А или 9Б?
-  const [hasDialogHistory] = useState(true);
+  const {
+    state,
+    isActive,
+    isMicAvailable,
+    error,
+    lastCommand,
+    start,
+    stop
+  } = useVoiceAssistant();
 
-  // Конфигурация состояний
+  // Автостарт при монтировании
+  useEffect(() => {
+    start();
+    return () => {
+      stop();
+    };
+  }, []);
+
+  // TODO: Убрать после тестирования
+  const isInternetConnected = true;
+  const assistantQuestion = '';
+  const hasDialogHistory = false;
+
   const getStateConfig = () => {
-    if (!isAssistantActive) {
+    if (!isActive) {
       return {
         text: 'Выключен',
         color: 'text-gray-500',
@@ -27,7 +40,27 @@ export const VoiceAssistant: React.FC = () => {
       };
     }
 
-    if (isRecording) {
+    if (state === 'initializing') {
+      return {
+        text: 'Инициализация...',
+        color: 'text-blue-600',
+        bgStyle: 'bg-gradient-to-br from-blue-400 to-blue-600',
+        icon: <Loader2 size={32} className="text-white animate-spin" />,
+        animation: null
+      };
+    }
+
+    if (state === 'error') {
+      return {
+        text: 'Ошибка',
+        color: 'text-red-600',
+        bgStyle: 'bg-gradient-to-br from-red-400 to-red-600',
+        icon: <MicOff size={32} className="text-white" />,
+        animation: null
+      };
+    }
+
+    if (state === 'recording-command') {
       return {
         text: 'Записываю команду...',
         color: 'text-red-600',
@@ -37,7 +70,17 @@ export const VoiceAssistant: React.FC = () => {
       };
     }
 
-    if (isWaitingForKeyword) {
+    if (state === 'wakeword-detected') {
+      return {
+        text: 'Слушаю!',
+        color: 'text-green-600',
+        bgStyle: 'bg-gradient-to-br from-green-400 to-green-600 scale-105',
+        icon: <Play size={32} className="text-white" />,
+        animation: 'ready'
+      };
+    }
+
+    if (state === 'waiting-wakeword') {
       return {
         text: `Скажите "${WAKE_WORD}"`,
         color: 'text-purple-600',
@@ -57,25 +100,25 @@ export const VoiceAssistant: React.FC = () => {
   };
 
   const getHintText = () => {
-    if (!isMicWorking) return '⚠️ Проверьте подключение микрофона';
+    if (!isMicAvailable) return '⚠️ Проверьте подключение микрофона';
     if (!isInternetConnected) return '⚠️ Требуется подключение к интернету';
-    if (isRecording) return '🎤 Произносите команду четко и громко';
-    if (isWaitingForKeyword) return `💡 Скажите "${WAKE_WORD}" для активации голосовых команд`;
+    if (error) return `⚠️ ${error}`;
+    if (state === 'initializing') return '⏳ Подключаемся к микрофону...';
+    if (state === 'recording-command') return '🎤 Произносите команду четко и громко';
+    if (state === 'waiting-wakeword') return `💡 Скажите "${WAKE_WORD}" для активации голосовых команд`;
+    if (state === 'wakeword-detected') return '✅ Wake word обнаружено!';
     return '💡 Можете произнести команду прямо сейчас';
   };
 
   const handleOpenDialogHistory = () => {
     console.log('Открываем историю диалогов с ассистентом');
-    // TODO: Реализовать открытие модального окна или drawer с историей
   };
 
-  const state = getStateConfig();
-  const hasSystemIssues = !isMicWorking || !isInternetConnected;
+  const stateConfig = getStateConfig();
+  const hasSystemIssues = !isMicAvailable || !isInternetConnected || !!error;
 
   return (
     <div className="flex items-center justify-center min-h-full p-8 relative">
-
-      {/* Кнопка истории диалогов в правом верхнем углу */}
       {hasDialogHistory && (
         <button
           onClick={handleOpenDialogHistory}
@@ -88,51 +131,47 @@ export const VoiceAssistant: React.FC = () => {
       )}
 
       <div className="flex items-start gap-8 max-w-4xl w-full">
-
-        {/* Анимированная кнопка */}
         <div className="flex-shrink-0 text-center">
           <div className="relative mb-3">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 cursor-pointer ${state.bgStyle}`}>
-              {state.icon}
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 cursor-pointer ${stateConfig.bgStyle}`}>
+              {stateConfig.icon}
             </div>
 
-            {/* Анимационные кольца */}
-            {state.animation === 'recording' && (
+            {stateConfig.animation === 'recording' && (
               <>
                 <div className="absolute inset-0 w-24 h-24 rounded-full bg-red-500 opacity-20 animate-ping" />
                 <div className="absolute -top-1 -left-1 w-26 h-26 rounded-full border-2 border-red-300 opacity-60 animate-pulse" />
               </>
             )}
 
-            {(state.animation === 'waiting-keyword' || state.animation === 'ready') && (
+            {(stateConfig.animation === 'waiting-keyword' || stateConfig.animation === 'ready') && (
               <div className={`absolute -top-1 -left-1 w-26 h-26 rounded-full border-2 opacity-40 animate-pulse ${
-                state.animation === 'waiting-keyword' ? 'border-purple-300' : 'border-green-300 opacity-60'
+                stateConfig.animation === 'waiting-keyword' ? 'border-purple-300' : 'border-green-300 opacity-60'
               }`} />
             )}
           </div>
 
-          <p className={`text-sm font-medium ${state.color}`}>
-            {state.text}
+          <p className={`text-sm font-medium ${stateConfig.color}`}>
+            {stateConfig.text}
           </p>
         </div>
 
-        {/* Информационная панель */}
         <div className="flex-1 space-y-3">
-
-          {/* Выключенный ассистент */}
-          {!isAssistantActive && (
+          {!isActive && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
               <p className="text-gray-600 mb-2">Голосовой ассистент отключен</p>
-              <button className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+              <button
+                onClick={start}
+                className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+              >
                 Включить ассистента
               </button>
             </div>
           )}
 
-          {/* Системные ошибки (только если ассистент активен) */}
-          {isAssistantActive && hasSystemIssues && (
+          {isActive && hasSystemIssues && (
             <div className="flex gap-3">
-              {!isMicWorking && (
+              {!isMicAvailable && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm">
                   <MicOff size={16} className="text-red-600" />
                   <span className="text-red-700">Микрофон недоступен</span>
@@ -145,11 +184,17 @@ export const VoiceAssistant: React.FC = () => {
                   <span className="text-red-700">Нет интернета</span>
                 </div>
               )}
+
+              {error && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm">
+                  <MicOff size={16} className="text-red-600" />
+                  <span className="text-red-700">{error}</span>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Диалог с ассистентом */}
-          {isAssistantActive && assistantQuestion && (
+          {isActive && assistantQuestion && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <HelpCircle size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
@@ -161,8 +206,7 @@ export const VoiceAssistant: React.FC = () => {
             </div>
           )}
 
-          {/* История команд */}
-          {isAssistantActive && lastCommand && !assistantQuestion && (
+          {isActive && lastCommand && !assistantQuestion && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <MessageCircle size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
@@ -174,13 +218,11 @@ export const VoiceAssistant: React.FC = () => {
             </div>
           )}
 
-          {/* Подсказки */}
-          {isAssistantActive && !assistantQuestion && (
+          {isActive && !assistantQuestion && (
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-sm text-gray-600">{getHintText()}</p>
             </div>
           )}
-
         </div>
       </div>
     </div>
