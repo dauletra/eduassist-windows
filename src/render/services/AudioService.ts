@@ -14,8 +14,8 @@ interface AudioServiceConfig {
 export class AudioService {
   private audioContext: AudioContext | null = null;
   private mediaStream: MediaStream | null = null;
-  // private audioWorkletNode: AudioWorkletNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
+  private processor: ScriptProcessorNode | null = null;
 
   private config: AudioServiceConfig = {
     sampleRate: 16000,
@@ -60,8 +60,8 @@ export class AudioService {
     }
 
     if (this.isCapturing) {
-      console.warn('⚠️ Audio capture already running');
-      return;
+      console.warn('⚠️ Audio capture already running, stopping previous capture...');
+      this.stopCapture();
     }
 
     this.callback = callback;
@@ -72,13 +72,13 @@ export class AudioService {
 
     // Создать ScriptProcessorNode для обработки аудио
     // (deprecated, но работает надежно; можно заменить на AudioWorklet позже)
-    const processor = this.audioContext.createScriptProcessor(
+    this.processor = this.audioContext.createScriptProcessor(
       this.config.frameSize,
       this.config.channelCount,
       this.config.channelCount
     );
 
-    processor.onaudioprocess = (event) => {
+    this.processor.onaudioprocess = (event) => {
       if (!this.isCapturing || !this.callback) return;
 
       const inputData = event.inputBuffer.getChannelData(0);
@@ -90,27 +90,42 @@ export class AudioService {
     };
 
     // Подключить: source -> processor -> destination
-    this.source.connect(processor);
-    processor.connect(this.audioContext.destination);
+    this.source.connect(this.processor);
+    this.processor.connect(this.audioContext.destination);
 
     console.log('🎤 Audio capture started');
   }
 
   stopCapture(): void {
-    if (!this.isCapturing) return;
+    if (!this.isCapturing) {
+      console.log('ℹ️ Audio capture already stopped');
+      return;
+    }
+
+    console.log('🛑 Stopping audio capture...');
 
     this.isCapturing = false;
     this.callback = null;
 
+    // Отключить processor
+    if (this.processor) {
+      this.processor.disconnect();
+      this.processor.onaudioprocess = null;
+      this.processor = null;
+    }
+
+    // Отключить source
     if (this.source) {
       this.source.disconnect();
       this.source = null;
     }
 
-    console.log('🛑 Audio capture stopped');
+    console.log('✅ Audio capture stopped');
   }
 
   async dispose(): Promise<void> {
+    console.log('🗑️ Disposing AudioService...');
+
     this.stopCapture();
 
     if (this.mediaStream) {
@@ -123,7 +138,7 @@ export class AudioService {
       this.audioContext = null;
     }
 
-    console.log('🗑️ AudioService disposed');
+    console.log('✅ AudioService disposed');
   }
 
   getState(): 'active' | 'inactive' | 'not-initialized' {

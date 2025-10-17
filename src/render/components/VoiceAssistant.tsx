@@ -4,7 +4,6 @@ import { useVoiceAssistant } from '../hooks/useVoiceAssistant';
 
 export const VoiceAssistant: React.FC = () => {
   const ASSISTANT_NAME = 'Galaxy';
-  const WAKE_WORD = 'Galaxy';
 
   const {
     state,
@@ -12,6 +11,9 @@ export const VoiceAssistant: React.FC = () => {
     isMicAvailable,
     error,
     lastCommand,
+    partialTranscript,
+    assistantQuestion,
+    assistantMessage,
     start,
     stop
   } = useVoiceAssistant();
@@ -26,7 +28,6 @@ export const VoiceAssistant: React.FC = () => {
 
   // TODO: Убрать после тестирования
   const isInternetConnected = true;
-  const assistantQuestion = '';
   const hasDialogHistory = false;
 
   const getStateConfig = () => {
@@ -80,9 +81,29 @@ export const VoiceAssistant: React.FC = () => {
       };
     }
 
+    if (state === 'processing') {
+      return {
+        text: 'Обрабатываю...',
+        color: 'text-blue-600',
+        bgStyle: 'bg-gradient-to-br from-blue-400 to-blue-600',
+        icon: <Loader2 size={32} className="text-white animate-spin" />,
+        animation: null
+      };
+    }
+
+    if (state === 'awaiting-response') {
+      return {
+        text: 'Жду ответа...',
+        color: 'text-amber-600',
+        bgStyle: 'bg-gradient-to-br from-amber-400 to-amber-600',
+        icon: <HelpCircle size={32} className="text-white animate-pulse" />,
+        animation: 'awaiting'
+      };
+    }
+
     if (state === 'waiting-wakeword') {
       return {
-        text: `Скажите "${WAKE_WORD}"`,
+        text: 'Скажите "Эй Марал"',
         color: 'text-purple-600',
         bgStyle: 'bg-gradient-to-br from-purple-400 via-purple-600 to-blue-600',
         icon: <Mic size={32} className="text-white" />,
@@ -105,8 +126,10 @@ export const VoiceAssistant: React.FC = () => {
     if (error) return `⚠️ ${error}`;
     if (state === 'initializing') return '⏳ Подключаемся к микрофону...';
     if (state === 'recording-command') return '🎤 Произносите команду четко и громко';
-    if (state === 'waiting-wakeword') return `💡 Скажите "${WAKE_WORD}" для активации голосовых команд`;
+    if (state === 'waiting-wakeword') return '💡 Скажите "Эй Марал" для активации голосовых команд';
     if (state === 'wakeword-detected') return '✅ Wake word обнаружено!';
+    if (state === 'processing') return '⏳ Обрабатываю команду...';
+    if (state === 'awaiting-response') return '💬 Ожидаю ваш ответ на вопрос';
     return '💡 Можете произнести команду прямо сейчас';
   };
 
@@ -144,9 +167,11 @@ export const VoiceAssistant: React.FC = () => {
               </>
             )}
 
-            {(stateConfig.animation === 'waiting-keyword' || stateConfig.animation === 'ready') && (
+            {(stateConfig.animation === 'waiting-keyword' || stateConfig.animation === 'ready' || stateConfig.animation === 'awaiting') && (
               <div className={`absolute -top-1 -left-1 w-26 h-26 rounded-full border-2 opacity-40 animate-pulse ${
-                stateConfig.animation === 'waiting-keyword' ? 'border-purple-300' : 'border-green-300 opacity-60'
+                stateConfig.animation === 'waiting-keyword' ? 'border-purple-300' :
+                  stateConfig.animation === 'awaiting' ? 'border-amber-300' :
+                    'border-green-300 opacity-60'
               }`} />
             )}
           </div>
@@ -194,6 +219,18 @@ export const VoiceAssistant: React.FC = () => {
             </div>
           )}
 
+          {isActive && partialTranscript && state === 'recording-command' && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Mic size={18} className="text-purple-600 mt-0.5 flex-shrink-0 animate-pulse" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-purple-800 mb-1">Распознаю:</p>
+                  <p className="text-purple-700 italic">"{partialTranscript}"</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isActive && assistantQuestion && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
@@ -206,19 +243,31 @@ export const VoiceAssistant: React.FC = () => {
             </div>
           )}
 
-          {isActive && lastCommand && !assistantQuestion && (
+          {isActive && lastCommand && !assistantQuestion && !partialTranscript && !assistantMessage && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <MessageCircle size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-blue-800 mb-1">Выполнена команда:</p>
+                  <p className="text-sm font-medium text-blue-800 mb-1">Последняя команда:</p>
                   <p className="text-blue-700">"{lastCommand}"</p>
                 </div>
               </div>
             </div>
           )}
 
-          {isActive && !assistantQuestion && (
+          {isActive && assistantMessage && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <MessageCircle size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-green-800 mb-1">✅ Выполнено:</p>
+                  <p className="text-green-700">{assistantMessage}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isActive && !assistantQuestion && !partialTranscript && !assistantMessage && (
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-sm text-gray-600">{getHintText()}</p>
             </div>

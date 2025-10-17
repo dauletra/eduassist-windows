@@ -22,12 +22,18 @@ export const VOICE_CONFIG = {
       tts: '/v1/speech/tts',
       clu: '/v1/clu/predict'
     },
-    language: 'ru-RU'
+    language: 'ru-RU',
+    clu: {
+      projectName: 'RussianEduAssistCLU', // Использовать default из .env сервера
+      deploymentName: 'DeployFive' // Использовать default из .env сервера
+    }
   },
 
   timeouts: {
     wakeWordDelay: 500,
     maxRecordingTime: 10000,
-    silenceTimeout: 1500
+    silenceTimeout: 1500,
+    commandProcessingTimeout: 5000,
+    messageDisplayTime: 3000
   }
 } as const;
