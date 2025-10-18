@@ -3,8 +3,9 @@ import { usePorcupine } from '@picovoice/porcupine-react';
 import { audioService } from '../services/AudioService';
 import { createWebSocketService } from '../services/WebSocketService';
 import { createCLUService } from '../services/CLUService';
-import { commandExecutor } from '../services/CommandExecutor.ts';
+import { DialogManager } from '../services/dialog/DialogManager.ts';
 import { VOICE_CONFIG } from '../config/voiceConfig';
+import type { SelectedGroup, Student, Class } from "../types";
 
 export type AssistantState =
   | 'inactive'
@@ -27,7 +28,87 @@ interface VoiceAssistantState {
   assistantMessage: string | null;
 }
 
-export const useVoiceAssistant = () => {
+interface UseVoiceAssistantParams {
+  selectedGroup: SelectedGroup | null;
+  students: Student[];
+  onOpenJournal: (groupId: string) => void;
+  appData: Class[] | null;
+}
+
+// Вне хука, перед export const useVoiceAssistant
+const handleOpenJournalResult = (
+  data: any,
+  appData: Class[] | null,
+  onOpenJournal: (groupId: string) => void
+) => {
+  console.group('📖 Opening Journal via Voice Command');
+  console.log('Data from intent:', data);
+  console.log('Available appData:', appData);
+
+  if (!appData || !data.classNumber || !data.classLetter || !data.groupNumber) {
+    console.warn('⚠️ Cannot open journal: missing data', {
+      hasAppData: !!appData,
+      classNumber: data.classNumber,
+      classLetter: data.classLetter,
+      groupNumber: data.groupNumber
+    });
+    console.groupEnd();
+    return;
+  }
+
+  const className = `${data.classNumber}${data.classLetter}`;
+  console.log('Looking for class:', className);
+  console.log('Available classes:', appData.map(c => c.name));
+
+// Гибкий поиск класса (с учётом разных форматов: "9В", "9 В", "9 В класс")
+  const cls = appData.find(c => {
+    // Нормализуем имя класса: убираем пробелы и слово "класс"
+    const normalized = c.name
+      .replace(/\s+/g, '')  // убрать все пробелы
+      .replace(/класс/gi, '') // убрать слово "класс"
+      .toUpperCase();
+
+    const searchName = className
+      .replace(/\s+/g, '')
+      .toUpperCase();
+
+    return normalized === searchName;
+  });
+  if (!cls) {
+    console.warn(`⚠️ Class ${className} not found in appData`);
+    console.log('Available class names:', appData.map(c => ({ id: c.id, name: c.name })));
+    console.groupEnd();
+    return;
+  }
+
+  console.log('✅ Class found:', cls);
+  console.log('Available groups:', cls.groups.map(g => ({ id: g.id, name: g.name })));
+
+  // Найти группу
+  // Найти группу (гибкий поиск)
+  const groupName = `${data.groupNumber} группа`;
+  console.log('Looking for group:', groupName);
+
+  const group = cls.groups.find(g => {
+    // Извлечь номер группы из названия (например, "1 группа" -> "1", "Группа 2" -> "2")
+    const match = g.name.match(/(\d+)/);
+    const groupNum = match ? match[1] : null;
+
+    return groupNum === String(data.groupNumber);
+  });
+  if (!group) {
+    console.warn(`⚠️ Group ${groupName} not found in class ${className}`);
+    console.groupEnd();
+    return;
+  }
+
+  console.log(`✅ Opening journal: ${className} ${groupName} (groupId: ${group.id})`);
+  console.groupEnd();
+
+  onOpenJournal(group.id);
+};
+
+export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appData }: UseVoiceAssistantParams) => {
   const [assistantState, setAssistantState] = useState<VoiceAssistantState>({
     state: 'inactive',
     isActive: false,
@@ -36,7 +117,7 @@ export const useVoiceAssistant = () => {
     lastCommand: null,
     partialTranscript: null,
     assistantQuestion: null,
-    assistantMessage: null
+    assistantMessage: null,
   });
 
   const isInitializedRef = useRef(false);
@@ -54,6 +135,76 @@ export const useVoiceAssistant = () => {
       locale: VOICE_CONFIG.api.language
     })
   );
+  const dialogManagerRef = useRef<DialogManager | null>(null);
+  const appDataRef = useRef<Class[] | null>(null);
+
+  useEffect(() => {
+    appDataRef.current = appData;
+  }, [appData]);
+
+// Ленивая инициализация DialogManager
+  const getDialogManager = useCallback(() => {
+    if (!dialogManagerRef.current) {
+      dialogManagerRef.current = new DialogManager();
+      console.log('✅ DialogManager initialized');
+    }
+    return dialogManagerRef.current;
+  }, []);
+
+  // Синхронизировать контекст DialogManager с приложением
+  useEffect(() => {
+    const dialogManager = getDialogManager();
+
+    if (selectedGroup && students.length > 0) {
+      // Парсим имя класса, например "8В" -> classNumber=8, classLetter=В
+      const match = selectedGroup.className.match(/^(\d+)([А-Яа-я]+)$/);
+      const classNumber = match ? match[1] : undefined;
+      const classLetter = match ? match[2] : undefined;
+
+      // Парсим номер группы, например "1 группа" -> groupNumber=1
+      const groupMatch = selectedGroup.groupName.match(/^(\d+)/);
+      const groupNumber = groupMatch ? groupMatch[1] : '1';
+
+      console.log('📋 Updating DialogManager context:', {
+        classNumber,
+        classLetter,
+        groupNumber,
+        studentsCount: students.length
+      });
+
+      dialogManager.getContext(); // Получаем текущий контекст
+      const currentContext = dialogManager.getContext();
+
+      // Обновляем контекст только если данные изменились
+      if (
+        currentContext.classNumber !== classNumber ||
+        currentContext.classLetter !== classLetter ||
+        currentContext.groupNumber !== groupNumber ||
+        currentContext.students?.length !== students.length
+      ) {
+        dialogManager.reset(); // Сбросить активные интенты при смене группы
+
+        // Устанавливаем новый контекст через внутренний state
+        const state = (dialogManager as any).state;
+        state.setContext({
+          classNumber,
+          classLetter,
+          groupNumber,
+          students
+        });
+
+        console.log('✅ DialogManager context updated');
+      }
+    } else {
+      // Если журнал не выбран, очистить контекст
+      const currentContext = dialogManager.getContext();
+      if (currentContext.classNumber || currentContext.students?.length) {
+        dialogManager.reset();
+        console.log('🔄 DialogManager context cleared');
+      }
+    }
+  }, [selectedGroup, students, getDialogManager]);
+
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
@@ -174,7 +325,7 @@ export const useVoiceAssistant = () => {
 
             // Выполнить команду
             console.log('⚙️ Executing command with intent:', cluResponse.topIntent);
-            const result = await commandExecutor.execute(cluResponse);
+            const result = await getDialogManager().process(cluResponse, text);
 
             console.log('📊 Command Execution Result:', {
               success: result.success,
@@ -183,35 +334,57 @@ export const useVoiceAssistant = () => {
               question: result.clarificationQuestion
             });
 
+            if (result.success && result.data) {
+              switch (result.data.type) {
+                case 'journal_opened':
+                  // Открыть журнал в UI
+                  handleOpenJournalResult(result.data, appDataRef.current, onOpenJournal);
+                  break;
+
+                case 'random_student':
+                  // TODO: Отобразить случайного ученика
+                  console.log('🎲 Random student:', result.data.student);
+                  break;
+
+                case 'groups_formed':
+                  // TODO: Отобразить группы в RandomizerTab
+                  console.log('👥 Groups formed:', result.data.groups);
+                  break;
+
+                case 'grade_set':
+                  // TODO: Обновить оценку в журнале
+                  console.log('📝 Grade set:', result.data);
+                  break;
+              }
+            }
+
             if (result.needsClarification) {
-              // Нужно уточнение - ждем ответа пользователя
               console.log('❓ Clarification needed:', result.clarificationQuestion);
 
               setAssistantState(prev => ({
                 ...prev,
                 state: 'awaiting-response',
                 assistantQuestion: result.clarificationQuestion || null,
-                assistantMessage: null
+                assistantMessage: null,
+                commandResult: null // очистить предыдущий результат
               }));
 
-              // Автоматически активировать запись для ответа через 1 секунду
               setTimeout(() => {
                 console.log('🎤 Auto-activating recording for response...');
                 startCommandRecording();
               }, 1000);
 
             } else {
-              // Команда выполнена успешно
               console.log('✅ Command executed successfully:', result.message);
 
               setAssistantState(prev => ({
                 ...prev,
                 state: 'waiting-wakeword',
                 assistantQuestion: null,
-                assistantMessage: result.message
+                assistantMessage: result.message,
+                commandResult: result // ДОБАВИТЬ ЭТО - передать результат в UI
               }));
 
-              // Вернуться в режим ожидания через 3 секунды
               setTimeout(() => {
                 returnToWaitingMode();
               }, 3000);
@@ -425,7 +598,7 @@ export const useVoiceAssistant = () => {
       lastCommand: null,
       partialTranscript: null,
       assistantQuestion: null,
-      assistantMessage: null
+      assistantMessage: null,
     });
 
     console.log('✅ Voice assistant stopped completely');

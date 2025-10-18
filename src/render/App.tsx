@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 // import reactLogo from './assets/react.svg'
 // import { MessageSquare } from 'lucide-react';
 import type { SelectedGroup, Lesson, Class } from './types';
@@ -14,6 +14,8 @@ const EduAssist = () => {
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [allLessons, setAllLessons] = useState<Lesson[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const handleGroupSelectRef = useRef<(groupId: string) => void>(null);
 
   const selectedGroup = useMemo((): SelectedGroup | null => {
     if (!selectedGroupIds || !appData) return null;
@@ -177,20 +179,55 @@ const EduAssist = () => {
   };
 
   // Обработчик выбора группы
-  const handleGroupSelect = async (groupId: string) => {
-    if (!appData) return;
+  const handleGroupSelect =  useCallback(async (groupId: string) => {
+    console.group('🎯 handleGroupSelect called');
+    console.log('Requested groupId:', groupId);
+    console.log('Current appData:', appData);
+
+    if (!appData) {
+      console.warn('⚠️ appData is null');
+      console.groupEnd();
+      return;
+    }
 
     const cls = appData.find(c => c.groups.some(g => g.id === groupId));
-    if (!cls) return;
+    console.log('Found class:', cls);
+
+    if (!cls) {
+      console.warn('⚠️ Class not found for groupId:', groupId);
+      console.groupEnd();
+      return;
+    }
 
     const group = cls.groups.find(g => g.id === groupId);
-    if (!group) return;
+    console.log('Found group:', group);
+
+    if (!group) {
+      console.warn('⚠️ Group not found');
+      console.groupEnd();
+      return;
+    }
+
+    console.log('✅ Setting selectedGroupIds:', {
+      classId: cls.id,
+      groupId: group.id,
+    });
 
     setSelectedGroupIds({
       classId: cls.id,
       groupId: group.id,
     });
-  };
+
+    console.groupEnd();
+  }, [appData]);
+
+  useEffect(() => {
+    handleGroupSelectRef.current = handleGroupSelect;
+  }, [handleGroupSelect]);
+
+  const handleGroupSelectStable = useCallback((groupId: string) => {
+    handleGroupSelectRef.current?.(groupId);
+  }, []);
 
   const handleLessonChange = (lesson: Lesson) => {
     setCurrentLesson(lesson);
@@ -247,7 +284,12 @@ const EduAssist = () => {
 
         {/* Голосовой ассистент - фиксированный */}
         <div className="bg-white flex-shrink-0">
-          <VoiceAssistant />
+          <VoiceAssistant
+            selectedGroup={selectedGroup}
+            students={groupData?.students || []}
+            onOpenJournal={handleGroupSelectStable}
+            appData={appData}
+          />
         </div>
 
         {/* Табы */}

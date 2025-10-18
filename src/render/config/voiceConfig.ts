@@ -25,7 +25,7 @@ export const VOICE_CONFIG = {
     language: 'ru-RU',
     clu: {
       projectName: 'RussianEduAssistCLU', // Использовать default из .env сервера
-      deploymentName: 'DeployFive' // Использовать default из .env сервера
+      deploymentName: 'FiveIntenst-phrase-deployment' // Использовать default из .env сервера
     }
   },
 

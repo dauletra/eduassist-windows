@@ -1,9 +1,18 @@
 import React, { useEffect } from 'react';
-import { Mic, MicOff, WifiOff, HelpCircle, MessageCircle, Play, MessageSquare, Loader2 } from 'lucide-react';
+import { Mic, MicOff, WifiOff, HelpCircle, MessageCircle, Play,
+          MessageSquare, Loader2 } from 'lucide-react';
 import { useVoiceAssistant } from '../hooks/useVoiceAssistant';
+import type { Student, SelectedGroup, Class } from "../types";
 
-export const VoiceAssistant: React.FC = () => {
-  const ASSISTANT_NAME = 'Galaxy';
+interface VoiceAssistantProps {
+  selectedGroup: SelectedGroup | null;
+  students: Student[];
+  onOpenJournal: (groupId: string) => void;
+  appData: Class[] | null;
+}
+
+export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ selectedGroup, students, onOpenJournal, appData }) => {
+  const ASSISTANT_NAME = 'AI-Maral';
 
   const {
     state,
@@ -16,7 +25,7 @@ export const VoiceAssistant: React.FC = () => {
     assistantMessage,
     start,
     stop
-  } = useVoiceAssistant();
+  } = useVoiceAssistant({ selectedGroup, students, onOpenJournal, appData });
 
   // Автостарт при монтировании
   useEffect(() => {
@@ -25,6 +34,7 @@ export const VoiceAssistant: React.FC = () => {
       stop();
     };
   }, []);
+
 
   // TODO: Убрать после тестирования
   const isInternetConnected = true;
@@ -103,7 +113,7 @@ export const VoiceAssistant: React.FC = () => {
 
     if (state === 'waiting-wakeword') {
       return {
-        text: 'Скажите "Эй Марал"',
+        text: 'Скажите "Ай-Марал"',
         color: 'text-purple-600',
         bgStyle: 'bg-gradient-to-br from-purple-400 via-purple-600 to-blue-600',
         icon: <Mic size={32} className="text-white" />,
@@ -126,7 +136,7 @@ export const VoiceAssistant: React.FC = () => {
     if (error) return `⚠️ ${error}`;
     if (state === 'initializing') return '⏳ Подключаемся к микрофону...';
     if (state === 'recording-command') return '🎤 Произносите команду четко и громко';
-    if (state === 'waiting-wakeword') return '💡 Скажите "Эй Марал" для активации голосовых команд';
+    if (state === 'waiting-wakeword') return '💡 Скажите "Ай-Марал" для активации голосовых команд';
     if (state === 'wakeword-detected') return '✅ Wake word обнаружено!';
     if (state === 'processing') return '⏳ Обрабатываю команду...';
     if (state === 'awaiting-response') return '💬 Ожидаю ваш ответ на вопрос';
