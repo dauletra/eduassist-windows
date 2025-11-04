@@ -24,7 +24,9 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ selectedGroup, s
     assistantQuestion,
     assistantMessage,
     start,
-    stop
+    stop,
+    startManualRecording,
+    stopManualRecording
   } = useVoiceAssistant({ selectedGroup, students, onOpenJournal, appData });
 
   // Автостарт при монтировании
@@ -166,19 +168,45 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ selectedGroup, s
       <div className="flex items-start gap-8 max-w-4xl w-full">
         <div className="flex-shrink-0 text-center">
           <div className="relative mb-3">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 cursor-pointer ${stateConfig.bgStyle}`}>
+            <div
+              className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 cursor-pointer ${stateConfig.bgStyle}`}
+              onClick={() => {
+                console.log('🖱️ Circle clicked, state:', state, 'isActive:', isActive);
+
+                if (!isActive) {
+                  console.log('⚠️ Assistant is not active');
+                  return;
+                }
+
+                if (state === 'recording-command') {
+                  console.log('⏹️ Stopping recording...');
+                  stopManualRecording();
+                } else if (state === 'waiting-wakeword' || state === 'awaiting-response') {
+                  console.log('🎤 Starting recording...');
+                  startManualRecording();
+                } else {
+                  console.log('⚠️ Cannot record in state:', state);
+                }
+              }}
+              title={
+                !isActive ? 'Ассистент выключен' :
+                  state === 'recording-command' ? 'Нажмите чтобы остановить запись' :
+                    state === 'waiting-wakeword' || state === 'awaiting-response' ? 'Нажмите чтобы начать запись' :
+                      'Голосовой ассистент'
+              }
+            >
               {stateConfig.icon}
             </div>
 
             {stateConfig.animation === 'recording' && (
               <>
-                <div className="absolute inset-0 w-24 h-24 rounded-full bg-red-500 opacity-20 animate-ping" />
-                <div className="absolute -top-1 -left-1 w-26 h-26 rounded-full border-2 border-red-300 opacity-60 animate-pulse" />
+                <div className="absolute inset-0 w-24 h-24 rounded-full bg-red-500 opacity-20 animate-ping pointer-events-none" />
+                <div className="absolute -top-1 -left-1 w-26 h-26 rounded-full border-2 border-red-300 opacity-60 animate-pulse pointer-events-none" />
               </>
             )}
 
             {(stateConfig.animation === 'waiting-keyword' || stateConfig.animation === 'ready' || stateConfig.animation === 'awaiting') && (
-              <div className={`absolute -top-1 -left-1 w-26 h-26 rounded-full border-2 opacity-40 animate-pulse ${
+              <div className={`absolute -top-1 -left-1 w-26 h-26 rounded-full border-2 opacity-40 animate-pulse pointer-events-none ${
                 stateConfig.animation === 'waiting-keyword' ? 'border-purple-300' :
                   stateConfig.animation === 'awaiting' ? 'border-amber-300' :
                     'border-green-300 opacity-60'

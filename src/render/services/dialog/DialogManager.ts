@@ -51,6 +51,12 @@ export class DialogManager {
     }
 
     // Проверить, требуется ли контекст
+    console.log('🔍 Context check:', {
+      requiresContext: intentDef.requiresContext,
+      hasContext: this.state.hasContext(),
+      currentContext: this.state.getContext()
+    });
+
     if (intentDef.requiresContext && !this.state.hasContext()) {
       console.log('⚠️ Context required but not available');
 

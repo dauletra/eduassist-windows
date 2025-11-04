@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText, Dice1, Monitor, LayoutGrid, ClipboardList } from "lucide-react";
 import FilesTab from "./FilesTab.tsx";
 import DevicesTab from "./DevicesTab.tsx";
@@ -6,6 +6,7 @@ import RandomizerTab from "./RandomizerTab";
 import { SeatingChart } from "./SeatingChart.tsx";
 import TasksTab from "./TasksTab";
 import type {SelectedGroup, Lesson, Group, LessonFolder} from "../types";
+import { voiceCommandBus } from "../services/VoiceCommandBus.ts";
 
 interface TabBarProps {
   selectedGroup: SelectedGroup | null;
@@ -17,6 +18,32 @@ interface TabBarProps {
 const TabBar = ({ selectedGroup, currentLesson, groupData, className }: TabBarProps) => {
   const [activeTab, setActiveTab] = useState('randomizer');
   const [selectedLesson, setSelectedLesson] = useState<LessonFolder | null>(null);
+
+  useEffect(() => {
+    // Карта команд -> вкладки
+    const commandToTab: Record<string, string> = {
+      'random_student': 'randomizer',
+      'groups_formed': 'randomizer',
+      'grade_set': 'tasks', // или другая вкладка где показываются оценки
+    };
+
+    const unsubscribes: (() => void)[] = [];
+
+    // Подписаться на все команды
+    Object.keys(commandToTab).forEach(commandType => {
+      const unsubscribe = voiceCommandBus.subscribe(commandType, () => {
+        const targetTab = commandToTab[commandType];
+        console.log(`🔀 Auto-switching to tab: ${targetTab}`);
+        setActiveTab(targetTab);
+      });
+      unsubscribes.push(unsubscribe);
+    });
+
+    // Cleanup
+    return () => {
+      unsubscribes.forEach(unsub => unsub());
+    };
+  }, []);
 
   const tabs = [
     { id: 'seating', icon: LayoutGrid, label: 'Рассадка' },

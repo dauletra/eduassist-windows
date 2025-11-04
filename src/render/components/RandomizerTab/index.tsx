@@ -8,6 +8,7 @@ import { RandomizerSettings } from './RandomizerSettings';
 import { getGridColumnsClass } from './utils';
 import { useRandomizer } from './useRandomizer';
 import { useGroupFormation } from './useGroupFormation';
+import { voiceCommandBus } from "../../services/VoiceCommandBus.ts";
 
 interface RandomizerTabProps {
   selectedGroup: SelectedGroup;
@@ -119,6 +120,20 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
     clearHistory();
   }, [includeAbsent, clearHistory]);
 
+  useEffect(() => {
+    // Обработчик команды random_student
+    const unsubscribe = voiceCommandBus.subscribe('random_student', (data) => {
+      console.log('🎲 Voice command: random_student received', data);
+
+      // Программно вызвать случайный выбор
+      randomizeStudent(null);
+    });
+
+    // Cleanup: отписаться при размонтировании
+    return () => {
+      unsubscribe();
+    };
+  }, [randomizeStudent]);
 
   useEffect(() => {
     if (!hasGroups && selectedStudent && !availableStudents.some(s => s.name === selectedStudent)) {

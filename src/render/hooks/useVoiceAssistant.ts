@@ -6,6 +6,7 @@ import { createCLUService } from '../services/CLUService';
 import { DialogManager } from '../services/dialog/DialogManager.ts';
 import { VOICE_CONFIG } from '../config/voiceConfig';
 import type { SelectedGroup, Student, Class } from "../types";
+import { voiceCommandBus } from '../services/VoiceCommandBus';
 
 export type AssistantState =
   | 'inactive'
@@ -156,52 +157,32 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
     const dialogManager = getDialogManager();
 
     if (selectedGroup && students.length > 0) {
-      // Парсим имя класса, например "8В" -> classNumber=8, classLetter=В
+      // Парсим имя класса
       const match = selectedGroup.className.match(/^(\d+)([А-Яа-я]+)$/);
       const classNumber = match ? match[1] : undefined;
       const classLetter = match ? match[2] : undefined;
 
-      // Парсим номер группы, например "1 группа" -> groupNumber=1
+      // Парсим номер группы
       const groupMatch = selectedGroup.groupName.match(/^(\d+)/);
       const groupNumber = groupMatch ? groupMatch[1] : '1';
 
-      console.log('📋 Updating DialogManager context:', {
+      console.log('📋 Setting DialogManager context from selectedGroup:', {
         classNumber,
         classLetter,
         groupNumber,
         studentsCount: students.length
       });
 
-      dialogManager.getContext(); // Получаем текущий контекст
-      const currentContext = dialogManager.getContext();
+      // Установить контекст БЕЗ сброса
+      const state = (dialogManager as any).state;
+      state.setContext({
+        classNumber,
+        classLetter,
+        groupNumber,
+        students
+      });
 
-      // Обновляем контекст только если данные изменились
-      if (
-        currentContext.classNumber !== classNumber ||
-        currentContext.classLetter !== classLetter ||
-        currentContext.groupNumber !== groupNumber ||
-        currentContext.students?.length !== students.length
-      ) {
-        dialogManager.reset(); // Сбросить активные интенты при смене группы
-
-        // Устанавливаем новый контекст через внутренний state
-        const state = (dialogManager as any).state;
-        state.setContext({
-          classNumber,
-          classLetter,
-          groupNumber,
-          students
-        });
-
-        console.log('✅ DialogManager context updated');
-      }
-    } else {
-      // Если журнал не выбран, очистить контекст
-      const currentContext = dialogManager.getContext();
-      if (currentContext.classNumber || currentContext.students?.length) {
-        dialogManager.reset();
-        console.log('🔄 DialogManager context cleared');
-      }
+      console.log('✅ DialogManager context set:', dialogManager.getContext());
     }
   }, [selectedGroup, students, getDialogManager]);
 
@@ -333,31 +314,29 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
               needsClarification: result.needsClarification,
               question: result.clarificationQuestion
             });
+            // ***********************************
+            if (result.success && cluResponse.topIntent === 'OpenJournal' && result.data) {
+              const dialogManager = getDialogManager();
+              const state = (dialogManager as any).state;
 
-            if (result.success && result.data) {
-              switch (result.data.type) {
-                case 'journal_opened':
-                  // Открыть журнал в UI
-                  handleOpenJournalResult(result.data, appDataRef.current, onOpenJournal);
-                  break;
+              state.setContext({
+                classNumber: result.data.classNumber,
+                classLetter: result.data.classLetter,
+                groupNumber: result.data.groupNumber,
+                students: students // используем текущий список из props
+              });
 
-                case 'random_student':
-                  // TODO: Отобразить случайного ученика
-                  console.log('🎲 Random student:', result.data.student);
-                  break;
-
-                case 'groups_formed':
-                  // TODO: Отобразить группы в RandomizerTab
-                  console.log('👥 Groups formed:', result.data.groups);
-                  break;
-
-                case 'grade_set':
-                  // TODO: Обновить оценку в журнале
-                  console.log('📝 Grade set:', result.data);
-                  break;
-              }
+              console.log('✅ Context saved after OpenJournal:', dialogManager.getContext());
             }
 
+            if (result.success && result.data) {
+              if (result.data.type === 'journal_opened') {
+                handleOpenJournalResult(result.data, appDataRef.current, onOpenJournal);
+              }
+
+              voiceCommandBus.emit(result.data.type, result.data);
+            }
+            // **********************************
             if (result.needsClarification) {
               console.log('❓ Clarification needed:', result.clarificationQuestion);
 
@@ -491,6 +470,15 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
       clearTimeout(recordingTimeoutRef.current);
       recordingTimeoutRef.current = null;
     }
+
+    // ВАЖНО: Вернуть состояние в waiting-wakeword
+    setAssistantState(prev => ({
+      ...prev,
+      state: 'waiting-wakeword',
+      partialTranscript: null
+    }));
+
+    console.log('✅ Recording stopped, state reset to waiting-wakeword');
   }, []);
 
   // Вернуться в режим ожидания wake-word
@@ -626,6 +614,8 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
     assistantQuestion: assistantState.assistantQuestion,
     assistantMessage: assistantState.assistantMessage,
     start,
-    stop
+    stop,
+    startManualRecording: startCommandRecording,
+    stopManualRecording: stopCommandRecording
   };
 };
