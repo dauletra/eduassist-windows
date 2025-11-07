@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 // import reactLogo from './assets/react.svg'
 // import { MessageSquare } from 'lucide-react';
-import type { SelectedGroup, Lesson, Class } from './types';
+import type { SelectedGroup, Lesson, Class, EnrichedLesson } from './types';
 import './App.css';
 import TabBar from './components/TabBar';
 import VoiceAssistant from './components/VoiceAssistant';
@@ -11,11 +11,101 @@ const EduAssist = () => {
   // Основные состояния
   const [appData, setAppData] = useState<Class[] | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = useState<{classId: string; groupId: string} | null>(null);
-  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
-  const [allLessons, setAllLessons] = useState<Lesson[]>([]);
+  const [currentLesson, setCurrentLesson] = useState<EnrichedLesson | null>(null);
+  const [allLessons, setAllLessons] = useState<EnrichedLesson[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const handleGroupSelectRef = useRef<(groupId: string) => void>(null);
+  /**
+   * Обогащает урок данными из appData
+   * Добавляет имена учеников из Group.students к LessonStudent
+   */
+  const enrichLesson = useCallback((lesson: Lesson | null): EnrichedLesson | null => {
+    if (!lesson || !appData) return lesson as EnrichedLesson | null;
+
+    console.log('📚 Enriching lesson with student names...');
+
+    // Найти класс и группу
+    const cls = appData.find(c => c.id === lesson.classId);
+    const group = cls?.groups.find(g => g.id === lesson.groupId);
+
+    if (!group) {
+      console.warn('⚠️ Group not found for lesson:', lesson.classId, lesson.groupId);
+      return lesson as EnrichedLesson;
+    }
+
+    // Обогатить учеников именами
+    const enrichedStudents = lesson.students.map(lessonStudent => {
+      const student = group.students.find(s => s.id === lessonStudent.id);
+
+      if (!student) {
+        console.warn('⚠️ Student not found:', lessonStudent.id);
+      }
+
+      return {
+        ...lessonStudent,
+        name: student?.name || `Ученик ${lessonStudent.id}`
+      };
+    });
+
+    console.log('✅ Lesson enriched:', {
+      total: enrichedStudents.length,
+      withNames: enrichedStudents.filter(s => !s.name.startsWith('Ученик ')).length
+    });
+
+    return {
+      ...lesson,
+      students: enrichedStudents
+    };
+  }, [appData]);
+
+  // ИЗМЕНИТЬ loadCurrentLesson:
+  const loadCurrentLesson = useCallback(async () => {
+    if (!selectedGroupIds) {
+      setCurrentLesson(null);
+      setAllLessons([]);
+      return;
+    }
+
+    try {
+      setError(null);
+
+      const lessons = await window.electronAPI.getAllLessons(
+        selectedGroupIds.classId,
+        selectedGroupIds.groupId
+      );
+
+      // Обогатить все уроки
+      const enrichedLessons = lessons.map((l: Lesson | null) => enrichLesson(l)).filter(Boolean) as EnrichedLesson[];
+      setAllLessons(enrichedLessons);
+
+      let lesson = await window.electronAPI.getTodayLesson(
+        selectedGroupIds.classId,
+        selectedGroupIds.groupId
+      );
+
+      if (!lesson) {
+        lesson = await window.electronAPI.createLesson(
+          selectedGroupIds.classId,
+          selectedGroupIds.groupId,
+          'Урок физики. Тема'
+        );
+        const enriched = enrichLesson(lesson);
+        if (enriched) {
+          setAllLessons(prev => [...prev, enriched]);
+        }
+      }
+
+      // Обогатить текущий урок
+      const enrichedLesson = enrichLesson(lesson);
+      setCurrentLesson(enrichedLesson);
+
+    } catch (error) {
+      console.error("Ошибка загрузки урока: ", error);
+      setError('Не удалось загрузить урок. Попробуйте еще раз.');
+      setCurrentLesson(null);
+      setAllLessons([]);
+    }
+  }, [selectedGroupIds, enrichLesson]);
 
   const selectedGroup = useMemo((): SelectedGroup | null => {
     if (!selectedGroupIds || !appData) return null;
@@ -54,33 +144,6 @@ const EduAssist = () => {
 
     return student?.name || studentId;  // s001 -> "Акмарал А."
   }, [appData, selectedGroupIds])
-
-  const loadCurrentLesson = useCallback(async () => {
-    if (!selectedGroupIds) {
-      setCurrentLesson(null);
-      setAllLessons([]);
-      return;
-    }
-
-    try {
-      setError(null);
-
-      const lessons = await window.electronAPI.getAllLessons(selectedGroupIds.classId, selectedGroupIds.groupId);
-      setAllLessons(lessons);
-
-      let lesson = await window.electronAPI.getTodayLesson(selectedGroupIds.classId, selectedGroupIds.groupId);
-      if (!lesson) {
-        lesson = await window.electronAPI.createLesson(selectedGroupIds.classId, selectedGroupIds.groupId, 'Урок физики. Тема');
-        setAllLessons(prev => [...prev, lesson]);
-      }
-      setCurrentLesson(lesson);
-    } catch (error) {
-      console.error("Ошибка загрузки урока: ", error);
-      setError('Не удалось загрузить урок. Попробуйте еще раз.');
-      setCurrentLesson(null);
-      setAllLessons([]);
-    }
-  }, [selectedGroupIds])
 
   // Оптимистичное обновление оценки
   const handleUpdateGrade = useCallback(async (lessonId: string, studentId: string, grade: number | null) => {
@@ -154,7 +217,6 @@ const EduAssist = () => {
 
     // Слушаем обновления из окна настроек
     const handleSettingsUpdate = () => {
-      console.log('📩 Получено уведомление об обновлении настроек');
       loadClassData();
     }
 
@@ -221,15 +283,82 @@ const EduAssist = () => {
     console.groupEnd();
   }, [appData]);
 
-  useEffect(() => {
-    handleGroupSelectRef.current = handleGroupSelect;
-  }, [handleGroupSelect]);
+  /**
+   * Обработчик открытия журнала по параметрам из голосовой команды
+   * Вызывается из VoiceAssistant при команде "Открой журнал 9 В второй группы"
+   *
+   * @returns true если журнал найден и открыт, false если не найден
+   */
+  const handleOpenJournalByParams = useCallback((
+    classNumber: string,
+    classLetter: string,
+    groupNumber: string
+  ): boolean => {
+    console.group('📖 Opening Journal by Voice Parameters');
+    console.log('Parameters:', { classNumber, classLetter, groupNumber });
 
-  const handleGroupSelectStable = useCallback((groupId: string) => {
-    handleGroupSelectRef.current?.(groupId);
-  }, []);
+    if (!appData) {
+      console.warn('⚠️ appData is null');
+      console.groupEnd();
+      return false;
+    }
 
-  const handleLessonChange = (lesson: Lesson) => {
+    // Поиск класса (гибкий - учитываем разные форматы: "9В", "9 В", "9 В класс")
+    const className = `${classNumber}${classLetter}`;
+    console.log('Looking for class:', className);
+
+    const cls = appData.find(c => {
+      // Нормализуем имя класса: убираем пробелы и слово "класс"
+      const normalized = c.name
+        .replace(/\s+/g, '')      // убрать все пробелы
+        .replace(/класс/gi, '')   // убрать слово "класс"
+        .toUpperCase();
+
+      const searchName = className
+        .replace(/\s+/g, '')
+        .toUpperCase();
+
+      return normalized === searchName;
+    });
+
+    if (!cls) {
+      console.warn(`⚠️ Class ${className} not found`);
+      console.log('Available classes:', appData.map(c => c.name));
+      console.groupEnd();
+      return false;
+    }
+
+    console.log('✅ Class found:', cls.name);
+
+    // Поиск группы (извлекаем номер из названия)
+    const group = cls.groups.find(g => {
+      // Извлечь номер группы из названия (например, "1 группа" -> "1", "Группа 2" -> "2")
+      const match = g.name.match(/(\d+)/);
+      const groupNum = match ? match[1] : null;
+
+      return groupNum === groupNumber;
+    });
+
+    if (!group) {
+      console.warn(`⚠️ Group ${groupNumber} not found in class ${className}`);
+      console.log('Available groups:', cls.groups.map(g => g.name));
+      console.groupEnd();
+      return false;
+    }
+
+    console.log(`✅ Opening journal: ${className} ${group.name} (groupId: ${group.id})`);
+    console.groupEnd();
+
+    // Открываем журнал через существующий обработчик
+    setSelectedGroupIds({
+      classId: cls.id,
+      groupId: group.id,
+    });
+
+    return true;
+  }, [appData]);
+
+  const handleLessonChange = (lesson: EnrichedLesson) => {
     setCurrentLesson(lesson);
   }
 
@@ -285,10 +414,8 @@ const EduAssist = () => {
         {/* Голосовой ассистент - фиксированный */}
         <div className="bg-white flex-shrink-0">
           <VoiceAssistant
-            selectedGroup={selectedGroup}
-            students={groupData?.students || []}
-            onOpenJournal={handleGroupSelectStable}
-            appData={appData}
+            currentLesson={currentLesson}
+            onOpenJournal={handleOpenJournalByParams}
           />
         </div>
 

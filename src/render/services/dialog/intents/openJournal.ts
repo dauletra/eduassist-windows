@@ -27,7 +27,7 @@ export const openJournalIntent: IntentDefinition = {
       required: true,
       type: 'string',
       entityCategory: 'ClassLetter',
-      prompt: 'Какую букву класса? Например: МР или А',
+      prompt: 'Какую букву класса? Например: Б или В',
       transform: (value) => {
         // Нормализация: убрать " класса", " КЛАССА", "-класса" и т.д.
         const normalized = String(value)
@@ -38,7 +38,7 @@ export const openJournalIntent: IntentDefinition = {
         return normalized;
       },
       validate: (value) => {
-        const validLetters = ['А', 'Ә', 'Б', 'В', 'Г', 'Д', 'МР'];
+        const validLetters = ['А', 'Ә', 'Б', 'В', 'Г', 'Д'];
         const normalized = String(value).toUpperCase().replace(/[-\s]?КЛАССА?/gi, '').trim();
 
         if (!validLetters.includes(normalized)) {

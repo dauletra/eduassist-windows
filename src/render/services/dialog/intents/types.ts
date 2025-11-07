@@ -1,5 +1,6 @@
 // import type { CLUResponse } from '../CLUService';
 import type { CommandContext } from '../DialogState';
+import type { EnrichedLesson } from '../../../types';
 
 // Определение слота
 export interface SlotDefinition {
@@ -27,5 +28,8 @@ export interface IntentDefinition {
   displayName: string;
   requiresContext: boolean; // Нужен ли открытый журнал
   slots: SlotDefinition[];
-  action: (slots: Record<string, any>, context: CommandContext) => Promise<ActionResult>;
+  action: (
+    slots: Record<string, any>,
+    context: CommandContext,
+    currentLesson: EnrichedLesson | null) => Promise<ActionResult>;
 }

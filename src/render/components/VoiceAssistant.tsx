@@ -2,16 +2,14 @@ import React, { useEffect } from 'react';
 import { Mic, MicOff, WifiOff, HelpCircle, MessageCircle, Play,
           MessageSquare, Loader2 } from 'lucide-react';
 import { useVoiceAssistant } from '../hooks/useVoiceAssistant';
-import type { Student, SelectedGroup, Class } from "../types";
+import type { Lesson } from "../types";
 
 interface VoiceAssistantProps {
-  selectedGroup: SelectedGroup | null;
-  students: Student[];
-  onOpenJournal: (groupId: string) => void;
-  appData: Class[] | null;
+  currentLesson: Lesson | null;
+  onOpenJournal: (classNumber: string, classLetter: string, groupNumber: string) => boolean;
 }
 
-export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ selectedGroup, students, onOpenJournal, appData }) => {
+export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ currentLesson, onOpenJournal }) => {
   const ASSISTANT_NAME = 'AI-Maral';
 
   const {
@@ -27,7 +25,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ selectedGroup, s
     stop,
     startManualRecording,
     stopManualRecording
-  } = useVoiceAssistant({ selectedGroup, students, onOpenJournal, appData });
+  } = useVoiceAssistant({ currentLesson, onOpenJournal });
 
   // Автостарт при монтировании
   useEffect(() => {
@@ -35,7 +33,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ selectedGroup, s
     return () => {
       stop();
     };
-  }, []);
+  }, [start, stop]);
 
 
   // TODO: Убрать после тестирования

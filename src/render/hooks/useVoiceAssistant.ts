@@ -5,7 +5,7 @@ import { createWebSocketService } from '../services/WebSocketService';
 import { createCLUService } from '../services/CLUService';
 import { DialogManager } from '../services/dialog/DialogManager.ts';
 import { VOICE_CONFIG } from '../config/voiceConfig';
-import type { SelectedGroup, Student, Class } from "../types";
+import type { EnrichedLesson } from "../types";
 import { voiceCommandBus } from '../services/VoiceCommandBus';
 
 export type AssistantState =
@@ -29,87 +29,18 @@ interface VoiceAssistantState {
   assistantMessage: string | null;
 }
 
+/**
+ * Новый интерфейс параметров
+ *
+ * @param currentLesson - текущий урок со всеми данными (students, grades, attendance)
+ * @param onOpenJournal - callback для открытия другого журнала (принимает classNumber, classLetter, groupNumber)
+ */
 interface UseVoiceAssistantParams {
-  selectedGroup: SelectedGroup | null;
-  students: Student[];
-  onOpenJournal: (groupId: string) => void;
-  appData: Class[] | null;
+  currentLesson: EnrichedLesson | null;
+  onOpenJournal: (classNumber: string, classLetter: string, groupNumber: string) => boolean;
 }
 
-// Вне хука, перед export const useVoiceAssistant
-const handleOpenJournalResult = (
-  data: any,
-  appData: Class[] | null,
-  onOpenJournal: (groupId: string) => void
-) => {
-  console.group('📖 Opening Journal via Voice Command');
-  console.log('Data from intent:', data);
-  console.log('Available appData:', appData);
-
-  if (!appData || !data.classNumber || !data.classLetter || !data.groupNumber) {
-    console.warn('⚠️ Cannot open journal: missing data', {
-      hasAppData: !!appData,
-      classNumber: data.classNumber,
-      classLetter: data.classLetter,
-      groupNumber: data.groupNumber
-    });
-    console.groupEnd();
-    return;
-  }
-
-  const className = `${data.classNumber}${data.classLetter}`;
-  console.log('Looking for class:', className);
-  console.log('Available classes:', appData.map(c => c.name));
-
-// Гибкий поиск класса (с учётом разных форматов: "9В", "9 В", "9 В класс")
-  const cls = appData.find(c => {
-    // Нормализуем имя класса: убираем пробелы и слово "класс"
-    const normalized = c.name
-      .replace(/\s+/g, '')  // убрать все пробелы
-      .replace(/класс/gi, '') // убрать слово "класс"
-      .toUpperCase();
-
-    const searchName = className
-      .replace(/\s+/g, '')
-      .toUpperCase();
-
-    return normalized === searchName;
-  });
-  if (!cls) {
-    console.warn(`⚠️ Class ${className} not found in appData`);
-    console.log('Available class names:', appData.map(c => ({ id: c.id, name: c.name })));
-    console.groupEnd();
-    return;
-  }
-
-  console.log('✅ Class found:', cls);
-  console.log('Available groups:', cls.groups.map(g => ({ id: g.id, name: g.name })));
-
-  // Найти группу
-  // Найти группу (гибкий поиск)
-  const groupName = `${data.groupNumber} группа`;
-  console.log('Looking for group:', groupName);
-
-  const group = cls.groups.find(g => {
-    // Извлечь номер группы из названия (например, "1 группа" -> "1", "Группа 2" -> "2")
-    const match = g.name.match(/(\d+)/);
-    const groupNum = match ? match[1] : null;
-
-    return groupNum === String(data.groupNumber);
-  });
-  if (!group) {
-    console.warn(`⚠️ Group ${groupName} not found in class ${className}`);
-    console.groupEnd();
-    return;
-  }
-
-  console.log(`✅ Opening journal: ${className} ${groupName} (groupId: ${group.id})`);
-  console.groupEnd();
-
-  onOpenJournal(group.id);
-};
-
-export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appData }: UseVoiceAssistantParams) => {
+export const useVoiceAssistant = ({ currentLesson, onOpenJournal }: UseVoiceAssistantParams) => {
   const [assistantState, setAssistantState] = useState<VoiceAssistantState>({
     state: 'inactive',
     isActive: false,
@@ -122,6 +53,8 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
   });
 
   const isInitializedRef = useRef(false);
+  const currentLessonRef = useRef<EnrichedLesson | null>(null);
+
   const wsServiceRef = useRef(
     createWebSocketService({
       baseUrl: VOICE_CONFIG.api.baseUrl,
@@ -129,6 +62,7 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
       language: VOICE_CONFIG.api.language
     })
   );
+
   const cluServiceRef = useRef(
     createCLUService({
       baseUrl: VOICE_CONFIG.api.baseUrl,
@@ -136,14 +70,15 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
       locale: VOICE_CONFIG.api.language
     })
   );
+
   const dialogManagerRef = useRef<DialogManager | null>(null);
-  const appDataRef = useRef<Class[] | null>(null);
 
+  // Обновляем ref при изменении currentLesson
   useEffect(() => {
-    appDataRef.current = appData;
-  }, [appData]);
+    currentLessonRef.current = currentLesson;
+  }, [currentLesson]);
 
-// Ленивая инициализация DialogManager
+  // Ленивая инициализация DialogManager
   const getDialogManager = useCallback(() => {
     if (!dialogManagerRef.current) {
       dialogManagerRef.current = new DialogManager();
@@ -154,37 +89,30 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
 
   // Синхронизировать контекст DialogManager с приложением
   useEffect(() => {
+    console.log('🔄 Context sync effect triggered');
+    console.log('currentLesson:', currentLesson);
+
     const dialogManager = getDialogManager();
 
-    if (selectedGroup && students.length > 0) {
-      // Парсим имя класса
-      const match = selectedGroup.className.match(/^(\d+)([А-Яа-я]+)$/);
-      const classNumber = match ? match[1] : undefined;
-      const classLetter = match ? match[2] : undefined;
-
-      // Парсим номер группы
-      const groupMatch = selectedGroup.groupName.match(/^(\d+)/);
-      const groupNumber = groupMatch ? groupMatch[1] : '1';
-
-      console.log('📋 Setting DialogManager context from selectedGroup:', {
-        classNumber,
-        classLetter,
-        groupNumber,
-        studentsCount: students.length
+    if (currentLesson) {
+      // Установить контекст из currentLesson
+      const dmState = (dialogManager as any).state;
+      dmState.setContext({
+        classId: currentLesson.classId,
+        groupId: currentLesson.groupId,
+        lessonId: currentLesson.id
       });
 
-      // Установить контекст БЕЗ сброса
-      const state = (dialogManager as any).state;
-      state.setContext({
-        classNumber,
-        classLetter,
-        groupNumber,
-        students
-      });
 
-      console.log('✅ DialogManager context set:', dialogManager.getContext());
+      console.log('✅ DialogManager context updated from currentLesson');
+      console.log('New context:', dmState.getContext());
+      console.log('Has context?', dmState.hasContext());
+    } else {
+      // Если урок не выбран - сбросить контекст
+      dialogManager.reset();
+      console.log('🔄 Context cleared (no lesson selected)');
     }
-  }, [selectedGroup, students, getDialogManager]);
+  }, [currentLesson, getDialogManager]);
 
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -198,23 +126,6 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
     stop: stopPorcupine,
     release
   } = usePorcupine();
-
-  // Обработка детекции wake-word
-  useEffect(() => {
-    if (keywordDetection && keywordDetection.label === VOICE_CONFIG.picovoice.wakeWord) {
-      console.log(`🎯 Wake word "${VOICE_CONFIG.picovoice.wakeWord}" detected!`);
-
-      setAssistantState(prev => ({
-        ...prev,
-        state: 'wakeword-detected',
-        partialTranscript: null
-      }));
-
-      setTimeout(() => {
-        startCommandRecording();
-      }, VOICE_CONFIG.timeouts.wakeWordDelay);
-    }
-  }, [keywordDetection]);
 
   // Обработка ошибок Porcupine
   useEffect(() => {
@@ -236,6 +147,64 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
       isInitializedRef.current = true;
     }
   }, [isLoaded, startPorcupine]);
+
+
+  // Начать захват аудио
+  const startAudioCapture = useCallback(() => {
+    audioService.startCapture((audioData) => {
+      // Отправлять аудио фреймы на сервер
+      if (wsServiceRef.current.isConnected()) {
+        wsServiceRef.current.send(audioData);
+      }
+    });
+  }, []);
+
+  // Остановить запись команды
+  const stopCommandRecording = useCallback(() => {
+    console.log('🛑 Stopping command recording...');
+
+    // Остановить аудио захват
+    audioService.stopCapture();
+
+    // Отправить stop событие (но НЕ отключаться от WebSocket)
+    if (wsServiceRef.current.isConnected()) {
+      wsServiceRef.current.stop();
+    }
+
+    // Очистить таймаут
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+
+    // ВАЖНО: Вернуть состояние в waiting-wakeword
+    setAssistantState(prev => ({
+      ...prev,
+      state: 'waiting-wakeword',
+      partialTranscript: null
+    }));
+
+    console.log('✅ Recording stopped, state reset to waiting-wakeword');
+  }, []);
+
+  // Вернуться в режим ожидания wake-word
+  const returnToWaitingMode = useCallback(() => {
+    console.log('🔄 Returning to waiting mode...');
+
+    setAssistantState(prev => ({
+      ...prev,
+      state: 'waiting-wakeword',
+      partialTranscript: null,
+      assistantQuestion: null,
+      assistantMessage: null
+    }));
+
+    // Перезапустить детекцию wake-word если она остановлена
+    if (!isListening) {
+      console.log('👂 Restarting wake word detection...');
+      startPorcupine();
+    }
+  }, [isListening, startPorcupine]);
 
   // Начать запись команды
   const startCommandRecording = useCallback(async () => {
@@ -266,7 +235,6 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
         onFinal: async (text: string) => {
           // Получен final результат
           console.log('✅ Final transcript:', text);
-          console.log('🔍 Starting command processing pipeline...');
 
           setAssistantState(prev => ({
             ...prev,
@@ -274,8 +242,6 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
             lastCommand: text,
             partialTranscript: null
           }));
-
-          console.log('📞 About to call CLU service...');
 
           // Отправить на CLU для обработки
           try {
@@ -289,54 +255,31 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
             console.group('🎯 CLU Response Details');
             console.log('Top Intent:', cluResponse.topIntent);
             console.log('Confidence:', cluResponse.intents[0]?.confidenceScore);
-            console.log('All Intents:', cluResponse.intents);
-            console.log('Entities Count:', cluResponse.entities.length);
-
-            if (cluResponse.entities.length > 0) {
-              console.log('📋 Extracted Entities:');
-              cluResponse.entities.forEach((entity, index) => {
-                console.log(`  ${index + 1}. ${entity.category}: "${entity.text}" (confidence: ${entity.confidenceScore})`);
-              });
-            } else {
-              console.log('No entities extracted');
-            }
-
-            console.log('Raw CLU Response:', cluResponse.raw);
+            console.log('Entities:', cluResponse.entities);
             console.groupEnd();
 
             // Выполнить команду
             console.log('⚙️ Executing command with intent:', cluResponse.topIntent);
-            const result = await getDialogManager().process(cluResponse, text);
+
+            // НОВОЕ: Получаем актуальные данные из ref
+            const currentContext = getDialogManager().getContext();
+            console.log('📋 Current context:', currentContext);
+            console.log('📚 Current lesson:', currentLessonRef.current);
+
+            // НОВОЕ: Передаём currentLesson в DialogManager
+            const result = await getDialogManager().process(
+              cluResponse,
+              text,
+              currentLessonRef.current // передаём текущий урок
+            );
 
             console.log('📊 Command Execution Result:', {
               success: result.success,
               message: result.message,
-              needsClarification: result.needsClarification,
-              question: result.clarificationQuestion
+              needsClarification: result.needsClarification
             });
-            // ***********************************
-            if (result.success && cluResponse.topIntent === 'OpenJournal' && result.data) {
-              const dialogManager = getDialogManager();
-              const state = (dialogManager as any).state;
 
-              state.setContext({
-                classNumber: result.data.classNumber,
-                classLetter: result.data.classLetter,
-                groupNumber: result.data.groupNumber,
-                students: students // используем текущий список из props
-              });
-
-              console.log('✅ Context saved after OpenJournal:', dialogManager.getContext());
-            }
-
-            if (result.success && result.data) {
-              if (result.data.type === 'journal_opened') {
-                handleOpenJournalResult(result.data, appDataRef.current, onOpenJournal);
-              }
-
-              voiceCommandBus.emit(result.data.type, result.data);
-            }
-            // **********************************
+            // ОБРАБОТКА РЕЗУЛЬТАТОВ
             if (result.needsClarification) {
               console.log('❓ Clarification needed:', result.clarificationQuestion);
 
@@ -344,8 +287,7 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
                 ...prev,
                 state: 'awaiting-response',
                 assistantQuestion: result.clarificationQuestion || null,
-                assistantMessage: null,
-                commandResult: null // очистить предыдущий результат
+                assistantMessage: null
               }));
 
               setTimeout(() => {
@@ -353,15 +295,55 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
                 startCommandRecording();
               }, 1000);
 
-            } else {
-              console.log('✅ Command executed successfully:', result.message);
+            } else if (result.success && result.data) {
+              // Команда выполнена успешно
 
+              // Специальная обработка OpenJournal
+              if (cluResponse.topIntent === 'OpenJournal' && result.data.type === 'journal_opened') {
+                const opened = onOpenJournal(
+                  result.data.classNumber,
+                  result.data.classLetter,
+                  result.data.groupNumber
+                );
+
+                if (!opened) {
+                  setAssistantState(prev => ({
+                    ...prev,
+                    state: 'waiting-wakeword',
+                    assistantMessage: 'Не удалось открыть журнал'
+                  }));
+                } else {
+                  // Публикуем событие для UI
+                  voiceCommandBus.emit(result.data.type, result.data);
+
+                  setAssistantState(prev => ({
+                    ...prev,
+                    state: 'waiting-wakeword',
+                    assistantMessage: result.message
+                  }));
+                }
+              } else {
+                // Другие команды - просто публикуем событие
+                voiceCommandBus.emit(result.data.type, result.data);
+
+                setAssistantState(prev => ({
+                  ...prev,
+                  state: 'waiting-wakeword',
+                  assistantMessage: result.message
+                }));
+              }
+
+              // Вернуться в режим ожидания через 3 секунды
+              setTimeout(() => {
+                returnToWaitingMode();
+              }, 3000);
+
+            } else {
+              // Команда не удалась
               setAssistantState(prev => ({
                 ...prev,
                 state: 'waiting-wakeword',
-                assistantQuestion: null,
-                assistantMessage: result.message,
-                commandResult: result // ДОБАВИТЬ ЭТО - передать результат в UI
+                assistantMessage: result.message || 'Команда не выполнена'
               }));
 
               setTimeout(() => {
@@ -371,13 +353,7 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
 
           } catch (error) {
             console.error('❌ Failed to process command:', error);
-            console.error('Error details:', {
-              name: error instanceof Error ? error.name : 'Unknown',
-              message: error instanceof Error ? error.message : String(error),
-              stack: error instanceof Error ? error.stack : undefined
-            });
 
-            // Остановить запись в случае ошибки
             stopCommandRecording();
 
             setAssistantState(prev => ({
@@ -441,64 +417,25 @@ export const useVoiceAssistant = ({ selectedGroup, students, onOpenJournal, appD
         error: error instanceof Error ? error.message : 'Ошибка записи'
       }));
     }
-  }, []);
+  }, [onOpenJournal, startAudioCapture, stopCommandRecording, returnToWaitingMode, getDialogManager]);
 
-  // Начать захват аудио
-  const startAudioCapture = useCallback(() => {
-    audioService.startCapture((audioData) => {
-      // Отправлять аудио фреймы на сервер
-      if (wsServiceRef.current.isConnected()) {
-        wsServiceRef.current.send(audioData);
-      }
-    });
-  }, []);
 
-  // Остановить запись команды
-  const stopCommandRecording = useCallback(() => {
-    console.log('🛑 Stopping command recording...');
+  // Обработка детекции wake-word
+  useEffect(() => {
+    if (keywordDetection && keywordDetection.label === VOICE_CONFIG.picovoice.wakeWord) {
+      console.log(`🎯 Wake word "${VOICE_CONFIG.picovoice.wakeWord}" detected!`);
 
-    // Остановить аудио захват
-    audioService.stopCapture();
+      setAssistantState(prev => ({
+        ...prev,
+        state: 'wakeword-detected',
+        partialTranscript: null
+      }));
 
-    // Отправить stop событие (но НЕ отключаться от WebSocket)
-    if (wsServiceRef.current.isConnected()) {
-      wsServiceRef.current.stop();
+      setTimeout(() => {
+        startCommandRecording();
+      }, VOICE_CONFIG.timeouts.wakeWordDelay);
     }
-
-    // Очистить таймаут
-    if (recordingTimeoutRef.current) {
-      clearTimeout(recordingTimeoutRef.current);
-      recordingTimeoutRef.current = null;
-    }
-
-    // ВАЖНО: Вернуть состояние в waiting-wakeword
-    setAssistantState(prev => ({
-      ...prev,
-      state: 'waiting-wakeword',
-      partialTranscript: null
-    }));
-
-    console.log('✅ Recording stopped, state reset to waiting-wakeword');
-  }, []);
-
-  // Вернуться в режим ожидания wake-word
-  const returnToWaitingMode = useCallback(() => {
-    console.log('🔄 Returning to waiting mode...');
-
-    setAssistantState(prev => ({
-      ...prev,
-      state: 'waiting-wakeword',
-      partialTranscript: null,
-      assistantQuestion: null,
-      assistantMessage: null
-    }));
-
-    // Перезапустить детекцию wake-word если она остановлена
-    if (!isListening) {
-      console.log('👂 Restarting wake word detection...');
-      startPorcupine();
-    }
-  }, [isListening, startPorcupine]);
+  }, [keywordDetection, startCommandRecording]);
 
   // Инициализация
   const initialize = useCallback(async () => {

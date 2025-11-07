@@ -1,11 +1,9 @@
-import type {Student} from "../../../electron/shared-types.ts";
+// import type {Student} from "../../../electron/shared-types.ts";
 
 export interface CommandContext {
-  classNumber?: string;
-  classLetter?: string;
-  groupNumber?: string;
-  students?: Student[];
-  files?: string[];
+  classId?: string;
+  groupId?: string;
+  lessonId?: string;
 }
 
 export interface DialogTurn {
@@ -31,6 +29,7 @@ export class DialogState {
   // Context
   setContext(update: Partial<CommandContext>): void {
     this.context = { ...this.context, ...update };
+    console.log('📝 Context updated:', this.context)
   }
 
   getContext(): CommandContext {
@@ -38,11 +37,12 @@ export class DialogState {
   }
 
   hasContext(): boolean {
-    return !!(this.context.classNumber && this.context.classLetter);
+    return !!this.context.groupId;
   }
 
   resetContext(): void {
     this.context = {};
+    console.log('🔄 Context reset');
   }
 
   // Active Intent

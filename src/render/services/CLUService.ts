@@ -43,8 +43,8 @@ export class CLUService {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('🧠 CLUService.predict() called');
       console.log('📝 Input text:', `"${text}"`);
-      console.log('📡 API URL:', `${this.config.baseUrl}/v1/clu/predict`);
-      console.log('🔑 API Key:', this.config.apiKey.substring(0, 15) + '...');
+      // console.log('📡 API URL:', `${this.config.baseUrl}/v1/clu/predict`);
+      // console.log('🔑 API Key:', this.config.apiKey.substring(0, 15) + '...');
 
       const requestBody = {
         text,
@@ -53,8 +53,8 @@ export class CLUService {
         locale: this.config.locale
       };
 
-      console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
-      console.log('🚀 Sending POST request...');
+      // console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
+      // console.log('🚀 Sending POST request...');
 
       const response = await fetch(`${this.config.baseUrl}/v1/clu/predict`, {
         method: 'POST',
@@ -65,12 +65,12 @@ export class CLUService {
         body: JSON.stringify(requestBody)
       });
 
-      console.log('📥 Response received');
-      console.log('   Status:', response.status, response.statusText);
-      console.log('   Headers:', {
-        'content-type': response.headers.get('content-type'),
-        'content-length': response.headers.get('content-length')
-      });
+      // console.log('📥 Response received');
+      // console.log('   Status:', response.status, response.statusText);
+      // console.log('   Headers:', {
+      //   'content-type': response.headers.get('content-type'),
+      //   'content-length': response.headers.get('content-length')
+      // });
 
       if (!response.ok) {
         const error = await response.json();
@@ -84,7 +84,7 @@ export class CLUService {
       console.log('✅ CLU Response received successfully');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('🎯 INTENT:', result.topIntent);
-      console.log('📊 Confidence:', (result.intents[0]?.confidenceScore * 100).toFixed(1) + '%');
+      // console.log('📊 Confidence:', (result.intents[0]?.confidenceScore * 100).toFixed(1) + '%');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       if (result.entities.length > 0) {

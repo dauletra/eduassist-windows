@@ -13,20 +13,10 @@ export const setGradeIntent: IntentDefinition = {
       type: 'student',
       entityCategory: 'StudentName',
       prompt: 'Кому поставить оценку?',
-      validate: (value, context) => {
+      validate: (value, _context) => {
         const name = String(value).trim();
         if (name.length < 2) {
           return 'Имя слишком короткое';
-        }
-
-        if (context.students && context.students.length > 0) {
-          const found = context.students.some(s =>
-            s.name.toLowerCase().includes(name.toLowerCase())
-          );
-
-          if (!found) {
-            return `Ученик "${name}" не найден в списке`;
-          }
         }
 
         return true;
@@ -61,21 +51,38 @@ export const setGradeIntent: IntentDefinition = {
     }
   ],
 
-  action: async (slots): Promise<ActionResult> => {
-    const studentName = slots.studentName;
-    const grade = slots.numberValue;
+  action: async (slots, _context, currentLesson): Promise<ActionResult> => {
+    if (!currentLesson) {
+      return {
+        success: false,
+        message: 'Сначала откройте журнал'
+      };
+    }
 
-    console.log(`✅ Setting grade ${grade} for student ${studentName}`);
+    const studentNameInput = String(slots.studentName).toLowerCase().trim();
+    const grade = Number(slots.numberValue);
 
-    // TODO: Записать оценку через IPC
-    // await window.electron.updateGrade(context.lessonId, studentId, grade)
+    console.log(`✅ Setting grade ${grade} for student ${studentNameInput}`);
+
+    const student = currentLesson.students.find(s => s.name.toLowerCase().includes(studentNameInput));
+
+    if (!student) {
+      return {
+        success: false,
+        message: `Ученик "${slots.studentName}" не найден в списке`
+      };
+    }
+
+    console.log(`Student found: `, student);
 
     return {
       success: true,
-      message: `Оценка ${grade} поставлена ученику ${studentName}`,
+      message: `Оценка ${grade} поставлена ученику ${student.id}`,
       data: {
         type: 'grade_set',
-        studentName,
+        lessonId: currentLesson.id,
+        studentId: student.id,
+        studentName: student.name,
         grade
       }
     };

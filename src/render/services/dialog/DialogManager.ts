@@ -1,4 +1,5 @@
 import type { CLUResponse } from '../CLUService';
+import type { EnrichedLesson } from '../../types';
 import { DialogState } from './DialogState';
 import { IntentRegistry } from './IntentRegistry';
 import { SlotFiller } from './SlotFiller';
@@ -23,11 +24,19 @@ export class DialogManager {
     this.slotFiller = new SlotFiller();
   }
 
-  async process(cluResponse: CLUResponse, userText: string): Promise<DialogResult> {
+  /**
+   * Обработать команду пользователя
+   *
+   * @param cluResponse - ответ от CLU с интентом и сущностями
+   * @param userText - оригинальный текст команды
+   * @param currentLesson - текущий урок (для доступа к актуальным данным)
+   */
+  async process(cluResponse: CLUResponse, userText: string, currentLesson: EnrichedLesson | null): Promise<DialogResult> {
     console.group('🎯 DialogManager.process()');
     console.log('User:', userText);
     console.log('Intent:', cluResponse.topIntent);
     console.log('Entities:', cluResponse.entities);
+    console.log('Current Lesson:', currentLesson);
 
     // Добавить в историю
     this.state.addTurn({
@@ -54,7 +63,8 @@ export class DialogManager {
     console.log('🔍 Context check:', {
       requiresContext: intentDef.requiresContext,
       hasContext: this.state.hasContext(),
-      currentContext: this.state.getContext()
+      currentContext: this.state.getContext(),
+      hasLesson: !!currentLesson
     });
 
     if (intentDef.requiresContext && !this.state.hasContext()) {
@@ -66,7 +76,7 @@ export class DialogManager {
         return {
           success: false,
           needsClarification: true,
-          clarificationQuestion: 'Сначала откройте журнал. Скажите: "Открой журнал 9 МР класс первой группы"',
+          clarificationQuestion: 'Сначала откройте журнал. Скажите: "Открой журнал 9 В класс первой группы"',
           message: 'Необходимо открыть журнал'
         };
       }
@@ -130,7 +140,11 @@ export class DialogManager {
     console.log('Slots:', slots);
 
     try {
-      const result = await intentDef.action(slots, this.state.getContext());
+      const result = await intentDef.action(
+        slots,
+        this.state.getContext(),
+        currentLesson
+      );
 
       // Обновить контекст если нужно
       if (result.updateContext) {

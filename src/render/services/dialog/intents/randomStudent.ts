@@ -1,5 +1,5 @@
 import type { IntentDefinition, ActionResult } from './types';
-// import type { CommandContext } from '../DialogState';
+// import type { Lesson } from '../../../types';
 
 export const randomStudentIntent: IntentDefinition = {
   name: 'RandomStudent',
@@ -8,29 +8,45 @@ export const randomStudentIntent: IntentDefinition = {
 
   slots: [], // Нет слотов - команда без параметров
 
-  action: async (slots, context): Promise<ActionResult> => {
-    if (!context.students || context.students.length === 0) {
+  action: async (_slots, _context, currentLesson): Promise<ActionResult> => {
+    // Проверка есть ли текущий урок
+    if (!currentLesson) {
       return {
         success: false,
-        message: 'Список учеников пуст. Сначала откройте журнал'
+        message: 'Сначала откройте журнал класса'
       };
     }
 
-    // Выбрать случайного ученика
-    const randomIndex = Math.floor(Math.random() * context.students.length);
-    const selected = context.students[randomIndex];
+    const allStudents = currentLesson.students;
 
-    console.log('🎲 Random student selected:', selected.name, typeof slots);
+    if (!allStudents || allStudents.length === 0) {
+      return {
+        success: false,
+        message: 'В текущем уроке нет учеников'
+      };
+    }
 
-    // TODO: Отобразить в UI
-    // window.electron.showRandomStudent(selected)
+    const presentStudents = allStudents.filter(student => student.attendance);
+
+    if (presentStudents.length === 0) {
+      return {
+        success: false,
+        message: 'Нет присутствующих учеников для выбора'
+      };
+    }
+
+    const randomIndex = Math.floor(Math.random() * presentStudents.length);
+    const selectedStudent = presentStudents[randomIndex];
+
+    console.log('🎲 Random student selected:', selectedStudent);
 
     return {
       success: true,
-      message: `Выбран ученик: ${selected.name}`,
+      message: `Выбран ученик: ${selectedStudent.id}`,
       data: {
         type: 'random_student',
-        student: selected
+        studentId: selectedStudent.id,
+        studentName: selectedStudent.name
       }
     };
   }

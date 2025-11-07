@@ -1,7 +1,7 @@
 // import {type Dispatch, type SetStateAction} from 'react';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight, MoreHorizontal, MessageSquare, UserX } from 'lucide-react';
-import type {SelectedGroup, Lesson } from '../types';
+import type {SelectedGroup, Lesson, EnrichedLesson } from '../types';
 
 interface StudentJournalProps {
   selectedGroup: SelectedGroup;
@@ -9,7 +9,7 @@ interface StudentJournalProps {
   allLessons: Lesson[];
   getStudentName: (studentId: string) => string;
   onBack: () => void;
-  onLessonChange: (lesson: Lesson) => void;
+  onLessonChange: (lesson: EnrichedLesson) => void;
   onUpdateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
   onUpdateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
 }

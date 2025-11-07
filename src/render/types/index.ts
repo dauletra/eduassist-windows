@@ -9,3 +9,13 @@ export interface SelectedGroup {
   groupId: string;
   groupName: string;
 }
+
+import type { Lesson, LessonStudent } from '../../electron/shared-types';
+
+export interface EnrichedLessonStudent extends LessonStudent {
+  name: string
+}
+
+export interface EnrichedLesson extends Omit<Lesson, 'students'> {
+  students: EnrichedLessonStudent[]
+}

@@ -1,7 +1,7 @@
 import { Settings as SettingsIcon } from 'lucide-react';
 import GroupSelector from './GroupSelector';
 import StudentJournal from './StudentJournal';
-import type { SelectedGroup, Class, Lesson } from '../types';
+import type { SelectedGroup, Class, Lesson, EnrichedLesson } from '../types';
 
 
 interface SidebarProps {
@@ -13,7 +13,7 @@ interface SidebarProps {
   getStudentName: (name: string) => string;
   onGroupSelect: (groupId: string) => void;
   onBackToGroups: () => void;
-  onLessonChange: (lesson: Lesson) => void;
+  onLessonChange: (lesson: EnrichedLesson) => void;
   onUpdateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
   onUpdateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
   onSettingsUpdate: () => void;
