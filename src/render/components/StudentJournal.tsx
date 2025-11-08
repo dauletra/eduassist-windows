@@ -30,13 +30,7 @@ const StudentJournal = ({
   const [menuPosition, setMenuPosition] = useState<{ top: number; left?: number; right?: number } | null>(null);
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const context = useMemo(() => ({
-    classId: currentLesson?.classId,
-    groupId: currentLesson?.groupId,
-    lessonId: currentLesson?.id
-  }), [currentLesson])
-
-  const commands = useCommands(context, currentLesson);
+  const commands = useCommands();
 
   const currentLessonIndex = useMemo(() => {
     return allLessons.findIndex(l => l.id === currentLesson.id);

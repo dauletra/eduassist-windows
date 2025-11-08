@@ -21,29 +21,9 @@ export interface ActiveIntent {
 }
 
 export class DialogState {
-  private context: CommandContext = {};
   private history: DialogTurn[] = [];
   private activeIntent: ActiveIntent | null = null;
   private readonly INTENT_TIMEOUT = 30000; // 30 сек
-
-  // Context
-  setContext(update: Partial<CommandContext>): void {
-    this.context = { ...this.context, ...update };
-    console.log('📝 Context updated:', this.context)
-  }
-
-  getContext(): CommandContext {
-    return { ...this.context };
-  }
-
-  hasContext(): boolean {
-    return !!this.context.groupId;
-  }
-
-  resetContext(): void {
-    this.context = {};
-    console.log('🔄 Context reset');
-  }
 
   // Active Intent
   setActiveIntent(name: string, slots: Record<string, any> = {}): void {
@@ -96,7 +76,6 @@ export class DialogState {
 
   // Full reset
   reset(): void {
-    this.context = {};
     this.history = [];
     this.activeIntent = null;
   }

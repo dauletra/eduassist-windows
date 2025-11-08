@@ -7,6 +7,7 @@ import { DialogManager } from '../services/dialog/DialogManager.ts';
 import { VOICE_CONFIG } from '../config/voiceConfig';
 import type { EnrichedLesson } from "../types";
 import { voiceCommandBus } from '../services/CommandEventBus.ts';
+import { useCommandContext } from '../contexts/CommandContext.tsx';
 
 export type AssistantState =
   | 'inactive'
@@ -52,6 +53,8 @@ export const useVoiceAssistant = ({ currentLesson, onOpenJournal }: UseVoiceAssi
     assistantMessage: null,
   });
 
+  const commandContext = useCommandContext();
+
   const isInitializedRef = useRef(false);
   const currentLessonRef = useRef<EnrichedLesson | null>(null);
 
@@ -86,33 +89,6 @@ export const useVoiceAssistant = ({ currentLesson, onOpenJournal }: UseVoiceAssi
     }
     return dialogManagerRef.current;
   }, []);
-
-  // Синхронизировать контекст DialogManager с приложением
-  useEffect(() => {
-    console.log('🔄 Context sync effect triggered');
-    console.log('currentLesson:', currentLesson);
-
-    const dialogManager = getDialogManager();
-
-    if (currentLesson) {
-      // Установить контекст из currentLesson
-      const dmState = (dialogManager as any).state;
-      dmState.setContext({
-        classId: currentLesson.classId,
-        groupId: currentLesson.groupId,
-        lessonId: currentLesson.id
-      });
-
-
-      console.log('✅ DialogManager context updated from currentLesson');
-      console.log('New context:', dmState.getContext());
-      console.log('Has context?', dmState.hasContext());
-    } else {
-      // Если урок не выбран - сбросить контекст
-      dialogManager.reset();
-      console.log('🔄 Context cleared (no lesson selected)');
-    }
-  }, [currentLesson, getDialogManager]);
 
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -261,16 +237,11 @@ export const useVoiceAssistant = ({ currentLesson, onOpenJournal }: UseVoiceAssi
             // Выполнить команду
             console.log('⚙️ Executing command with intent:', cluResponse.topIntent);
 
-            // НОВОЕ: Получаем актуальные данные из ref
-            const currentContext = getDialogManager().getContext();
-            console.log('📋 Current context:', currentContext);
-            console.log('📚 Current lesson:', currentLessonRef.current);
-
-            // НОВОЕ: Передаём currentLesson в DialogManager
+            // В обработчике onFinal:
             const result = await getDialogManager().process(
               cluResponse,
               text,
-              currentLessonRef.current // передаём текущий урок
+              commandContext // ← передаем актуальный контекст
             );
 
             console.log('📊 Command Execution Result:', {

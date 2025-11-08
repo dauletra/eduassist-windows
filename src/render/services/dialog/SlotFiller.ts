@@ -1,6 +1,6 @@
 import type { CLUResponse } from '../CLUService';
-import type { IntentDefinition, SlotDefinition } from './intents/types';
-import type { CommandContext } from './DialogState';
+import type { IntentDefinition, SlotDefinition } from './intents/types.ts';
+import type { DialogContext } from './DialogManager';
 
 interface SlotFillerResult {
   slots: Record<string, any>;
@@ -27,7 +27,7 @@ export class SlotFiller {
     intentDef: IntentDefinition,
     cluResponse: CLUResponse,
     existingSlots: Record<string, any>,
-    context: CommandContext
+    context: DialogContext
   ): SlotFillerResult {
     const slots: Record<string, any> = { ...existingSlots };
     const validationErrors: Record<string, string> = {};
@@ -66,7 +66,11 @@ export class SlotFiller {
     // 3. Валидация заполненных слотов
     for (const slotDef of intentDef.slots) {
       if (slots[slotDef.name] !== undefined && slotDef.validate) {
-        const validationResult = slotDef.validate(slots[slotDef.name], context);
+        const validationResult = slotDef.validate(
+          slots[slotDef.name],
+          context,
+          context.currentLesson
+        );
 
         if (typeof validationResult === 'string') {
           validationErrors[slotDef.name] = validationResult;

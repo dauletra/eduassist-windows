@@ -18,6 +18,7 @@ export const openJournalCommand: CommandDefinition = {
     {
       name: 'classNumber',
       type: 'string',
+      entityCategory: 'ClassNumber',
       required: true,
       description: 'Номер класса (7-11)',
       validate: (value) => {
@@ -31,6 +32,7 @@ export const openJournalCommand: CommandDefinition = {
     {
       name: 'classLetter',
       type: 'string',
+      entityCategory: 'ClassLetter',
       required: true,
       description: 'Буква класса (А, Ә, Б, В, Г, Д)',
       validate: (value) => {
@@ -59,9 +61,9 @@ export const openJournalCommand: CommandDefinition = {
     {
       name: 'groupNumber',
       type: 'string',
+      entityCategory: 'GroupNumber',
       required: false,
       description: 'Номер группы (1 или 2)',
-      default: '1', // По умолчанию первая группа
       validate: (value) => {
         const normalized = String(value);
         if (!['1', '2'].includes(normalized)) {
@@ -73,8 +75,8 @@ export const openJournalCommand: CommandDefinition = {
         // Нормализация: "первая", "первую", "первой" -> "1"
         const str = String(value).toLowerCase();
 
-        if (/^(1|первая|первую|первой)$/i.test(str)) return '1';
-        if (/^(2|вторая|вторую|второй)$/i.test(str)) return '2';
+        if (/^(1|первая|первую|первой|1 группы)$/i.test(str)) return '1';
+        if (/^(2|вторая|вторую|второй|2 группы)$/i.test(str)) return '2';
 
         return str;
       }

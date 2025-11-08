@@ -25,14 +25,8 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
   const [peoplePerGroup, setPeoplePerGroup] = useState(2);
   const [groupScores, setGroupScores] = useState<number[]>([]);
 
-  // НОВОЕ: Подключаем Command API
-  const context = useMemo(() => ({
-    classId: currentLesson?.classId,
-    groupId: currentLesson?.groupId,
-    lessonId: currentLesson?.id
-  }), [currentLesson]);
 
-  const commands = useCommands(context, currentLesson);
+  const commands = useCommands();
 
   const {
     selectedStudent,

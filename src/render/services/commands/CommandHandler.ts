@@ -1,5 +1,5 @@
 import type { EnrichedLesson } from '../../types';
-import type { CommandContext } from '../dialog/DialogState';
+import type { DialogContext } from '../dialog/DialogManager';
 import type {
   Command,
   CommandResult,
@@ -68,7 +68,7 @@ export class CommandHandler {
    */
   async execute(
     command: Command,
-    context: CommandContext,
+    context: DialogContext,
     currentLesson: EnrichedLesson | null
   ): Promise<CommandResult> {
     console.group(`🎯 CommandHandler.execute()`);
@@ -179,7 +179,7 @@ export class CommandHandler {
   private validateParams(
     definition: CommandDefinition,
     params: Record<string, any>,
-    context: CommandContext,
+    context: DialogContext,
     currentLesson: EnrichedLesson | null
   ): { valid: boolean; errors: Record<string, string> } {
     const errors: Record<string, string> = {};

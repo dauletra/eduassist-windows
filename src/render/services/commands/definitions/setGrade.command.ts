@@ -18,6 +18,7 @@ export const setGradeCommand: CommandDefinition = {
     {
       name: 'studentName',
       type: 'student',
+      entityCategory: 'StudentName',
       required: true,
       description: 'Имя ученика (для голоса) или ID ученика (для UI)',
       validate: (value, _context, currentLesson) => {
@@ -55,6 +56,7 @@ export const setGradeCommand: CommandDefinition = {
     {
       name: 'numberValue',
       type: 'number',
+      entityCategory: 'NumberValue',
       required: true,
       description: 'Оценка от 1 до 10',
       validate: (value) => {

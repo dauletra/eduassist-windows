@@ -33,6 +33,7 @@ export interface CommandResult {
 export interface CommandParamDefinition {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'student' | 'file' | 'array';
+  entityCategory?: string;
   required: boolean;
   description?: string;
   validate?: (value: any, context: CommandContext, lesson: EnrichedLesson | null) => boolean | string;

@@ -30,6 +30,7 @@ export const divideByGroupCountCommand: CommandDefinition = {
     {
       name: 'numberValue',
       type: 'number',
+      entityCategory: 'NumberValue',
       required: true,
       description: 'Количество групп (2-10)',
       validate: (value, _context, currentLesson) => {
@@ -150,6 +151,7 @@ export const divideByGroupSizeCommand: CommandDefinition = {
     {
       name: 'numberValue',
       type: 'number',
+      entityCategory: 'NumberValue',
       required: true,
       description: 'Размер группы (1-10)',
       validate: (value, _context, currentLesson) => {

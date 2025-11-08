@@ -21,16 +21,11 @@ export class IntentRegistry {
   }
 
   private convertParamsToSlots(params: any[]): any[] {
-    // Конвертируем CommandParamDefinition в SlotDefinition
     return params.map(param => ({
       name: param.name,
       required: param.required,
       type: param.type,
-      entityCategory: param.name === 'studentName' ? 'StudentName' :
-        param.name === 'numberValue' ? 'NumberValue' :
-          param.name === 'classNumber' ? 'ClassNumber' :
-            param.name === 'classLetter' ? 'ClassLetter' :
-              param.name === 'groupNumber' ? 'GroupNumber' : undefined,
+      entityCategory: param.entityCategory, // ← Теперь берем напрямую
       prompt: param.description || `Укажите ${param.name}`,
       validate: param.validate,
       transform: param.transform,

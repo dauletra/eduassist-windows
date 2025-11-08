@@ -4,6 +4,7 @@ import './App.css';
 import TabBar from './components/TabBar';
 import VoiceAssistant from './components/VoiceAssistant';
 import Sidebar from './components/Sidebar';
+import { CommandProvider } from './contexts/CommandContext';
 
 import { commandHandler, allCommands } from './services/commands';
 import { commandEventBus } from './services/CommandEventBus.ts';
@@ -153,26 +154,10 @@ const EduAssist = () => {
       }
     });
 
-    // Подписка на команду RandomStudent
-    const unsubscribeRandomStudent = commandEventBus.subscribe('random_student_selected', (data) => {
-      console.log('📢 CommandEventBus: random_student_selected received', data);
-      // RandomStudent обрабатывается внутри RandomizerTab
-      // Здесь можно добавить дополнительную логику если нужно
-    });
-
-    // Подписка на команду DivideStudents
-    const unsubscribeGroupsFormed = commandEventBus.subscribe('groups_formed', (data) => {
-      console.log('📢 CommandEventBus: groups_formed received', data);
-      // DivideStudents обрабатывается внутри RandomizerTab
-      // Здесь можно добавить дополнительную логику если нужно
-    });
-
     return () => {
       console.log('📡 Cleaning up CommandEventBus subscriptions...');
       unsubscribeGrade();
       unsubscribeJournal();
-      unsubscribeRandomStudent();
-      unsubscribeGroupsFormed();
     };
   }, [currentLesson, handleOpenJournalByParams, handleUpdateGrade]); // зависимость от currentLesson для handleUpdateGrade
 
@@ -431,7 +416,8 @@ const EduAssist = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
+    <CommandProvider currentLesson={currentLesson}>
+      <div className="h-screen bg-gray-50 flex overflow-hidden">
 
       {/*Добавить уведомление об ошибке*/}
       {error && (
@@ -486,6 +472,7 @@ const EduAssist = () => {
         </div>
       </div>
     </div>
+    </CommandProvider>
   );
 };
 

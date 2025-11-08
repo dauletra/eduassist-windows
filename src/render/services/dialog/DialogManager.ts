@@ -5,6 +5,13 @@ import { IntentRegistry } from './IntentRegistry';
 import { SlotFiller } from './SlotFiller';
 import { voiceAdapter } from '../commands/adapters/VoiceAdapter';
 
+export interface DialogContext {
+  classId?: string;
+  groupId?: string;
+  lessonId?: string;
+  currentLesson: EnrichedLesson | null;
+}
+
 export interface DialogResult {
   success: boolean;
   message: string;
@@ -29,14 +36,18 @@ export class DialogManager {
    *
    * @param cluResponse - ответ от CLU с интентом и сущностями
    * @param userText - оригинальный текст команды
-   * @param currentLesson - текущий урок (для доступа к актуальным данным)
+   * @param context - текущий контекст из React Context (единственный источник правды)
    */
-  async process(cluResponse: CLUResponse, userText: string, currentLesson: EnrichedLesson | null): Promise<DialogResult> {
+  async process(
+    cluResponse: CLUResponse,
+    userText: string,
+    context: DialogContext
+  ): Promise<DialogResult> {
     console.group('🎯 DialogManager.process()');
     console.log('User:', userText);
     console.log('Intent:', cluResponse.topIntent);
     console.log('Entities:', cluResponse.entities);
-    console.log('Current Lesson:', currentLesson);
+    console.log('Context:', context);
 
     // Добавить в историю
     this.state.addTurn({
@@ -60,14 +71,15 @@ export class DialogManager {
     }
 
     // Проверить, требуется ли контекст
+    const hasContext = !!(context.classId && context.groupId);
+
     console.log('🔍 Context check:', {
       requiresContext: intentDef.requiresContext,
-      hasContext: this.state.hasContext(),
-      currentContext: this.state.getContext(),
-      hasLesson: !!currentLesson
+      hasContext,
+      context
     });
 
-    if (intentDef.requiresContext && !this.state.hasContext()) {
+    if (intentDef.requiresContext && !hasContext) {
       console.log('⚠️ Context required but not available');
 
       // Если это OpenJournal, продолжить обработку
@@ -76,7 +88,7 @@ export class DialogManager {
         return {
           success: false,
           needsClarification: true,
-          clarificationQuestion: 'Сначала откройте журнал. Скажите: "Открой журнал 9 В класс первой группы"',
+          clarificationQuestion: 'Сначала откройте журнал',
           message: 'Необходимо открыть журнал'
         };
       }
@@ -88,12 +100,12 @@ export class DialogManager {
 
     const currentSlots = isSameIntent ? activeIntent!.slots : {};
 
-    // Заполнить слоты
+    // Заполнить слоты (передаём контекст для валидации)
     const { slots, missingSlots, validationErrors } = this.slotFiller.fillSlots(
       intentDef,
       cluResponse,
       currentSlots,
-      this.state.getContext()
+      context // Используем переданный контекст
     );
 
     // Проверить ошибки валидации
@@ -140,18 +152,13 @@ export class DialogManager {
     console.log('Slots:', slots);
 
     try {
-      // ИЗМЕНЕНИЕ: Используем VoiceAdapter вместо прямого вызова action
+      // Выполнить команду через VoiceAdapter
       const result = await voiceAdapter.executeVoiceCommand(
         intentName,
         slots,
-        this.state.getContext(),
-        currentLesson
+        context, // Передаём актуальный контекст
+        context.currentLesson
       );
-
-      // Обновить контекст если нужно
-      if (result.updateContext) {
-        this.state.setContext(result.updateContext);
-      }
 
       // Очистить активный intent
       this.state.clearActiveIntent();
@@ -185,10 +192,6 @@ export class DialogManager {
   }
 
   // Публичные методы для управления состоянием
-  getContext() {
-    return this.state.getContext();
-  }
-
   getHistory() {
     return this.state.getHistory();
   }

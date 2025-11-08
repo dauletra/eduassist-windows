@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 import type { EnrichedLesson } from '../types';
+import type { DialogContext } from '../services/dialog/DialogManager';
 
 /**
  * Интерфейс контекста команд
@@ -15,7 +16,7 @@ interface CommandContextValue {
 /**
  * React Context для глобального состояния команд
  */
-const CommandContext = createContext<CommandContextValue | null>(null);
+const CommandContext = createContext<DialogContext | null>(null);
 
 /**
  * Provider для CommandContext
