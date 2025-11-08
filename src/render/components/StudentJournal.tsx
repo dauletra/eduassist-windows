@@ -1,12 +1,13 @@
 // import {type Dispatch, type SetStateAction} from 'react';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useCommands } from '../hooks/useCommands';
 import { ChevronLeft, ChevronRight, MoreHorizontal, MessageSquare, UserX } from 'lucide-react';
-import type {SelectedGroup, Lesson, EnrichedLesson } from '../types';
+import type {SelectedGroup, EnrichedLesson } from '../types';
 
 interface StudentJournalProps {
   selectedGroup: SelectedGroup;
-  currentLesson: Lesson;
-  allLessons: Lesson[];
+  currentLesson: EnrichedLesson;
+  allLessons: EnrichedLesson[];
   getStudentName: (studentId: string) => string;
   onBack: () => void;
   onLessonChange: (lesson: EnrichedLesson) => void;
@@ -21,14 +22,21 @@ const StudentJournal = ({
   getStudentName,
   onBack,
   onLessonChange,
-  onUpdateGrade,
+  // onUpdateGrade,
   onUpdateAttendance,
 }: StudentJournalProps) => {
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left?: number; right?: number } | null>(null);
-  // const [localGrades, setLocalGrades] = useState<{[studentId: string]: string}>({});
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  const context = useMemo(() => ({
+    classId: currentLesson?.classId,
+    groupId: currentLesson?.groupId,
+    lessonId: currentLesson?.id
+  }), [currentLesson])
+
+  const commands = useCommands(context, currentLesson);
 
   const currentLessonIndex = useMemo(() => {
     return allLessons.findIndex(l => l.id === currentLesson.id);
@@ -100,30 +108,42 @@ const StudentJournal = ({
     setOpenMenu(studentId);
   };
 
-  // Объединенная функция обновления оценки
-  const handleGradeUpdate = useCallback(async (studentId: string, gradeValue: string) => {
-    // Парсим значение для отправки на сервер (только цифры от 1 до 10)
-    let grade: number | null = null;
-    if (gradeValue) {
-      const parsed = parseInt(gradeValue);
-      if (!isNaN(parsed) && parsed >= 1 && parsed <= 10) {
-        grade = parsed;
-      }
-    }
+  const handleGradeClick = async (studentId: string, grade: number) => {
+    console.log('🖱️ UI: Grade button clicked', { studentId, grade });
 
-    try {
-      await onUpdateGrade(currentLesson.id, studentId, grade);
-    } catch (error) {
-      console.error('Ошибка обновления оценки:', error);
+    const result = await commands.setGrade(studentId, grade);
+
+    if (!result.success) {
+      console.error('❌ SetGrade failed:', result.message);
+      // Опционально: показать уведомление об ошибке
     }
-  }, [currentLesson.id, onUpdateGrade]);
+    // UI обновится автоматически через VoiceCommandBus в App.tsx
+  };
+
+  // Объединенная функция обновления оценки
+  // const handleGradeUpdate = useCallback(async (studentId: string, gradeValue: string) => {
+  //   // Парсим значение для отправки на сервер (только цифры от 1 до 10)
+  //   let grade: number | null = null;
+  //   if (gradeValue) {
+  //     const parsed = parseInt(gradeValue);
+  //     if (!isNaN(parsed) && parsed >= 1 && parsed <= 10) {
+  //       grade = parsed;
+  //     }
+  //   }
+  //
+  //   try {
+  //     await onUpdateGrade(currentLesson.id, studentId, grade);
+  //   } catch (error) {
+  //     console.error('Ошибка обновления оценки:', error);
+  //   }
+  // }, [currentLesson.id, onUpdateGrade]);
 
   // Обработчики для меню
   const handleQuickScore = useCallback((studentId: string, score: string) => {
-    handleGradeUpdate(studentId, score);
+    handleGradeClick(studentId, Number(score));
     setOpenMenu(null);
     setMenuPosition(null);
-  }, [handleGradeUpdate]);
+  }, [handleGradeClick]);
 
   const handleAttendanceUpdate = useCallback(async (studentId: string, attendance: boolean) => {
     try {
@@ -233,7 +253,7 @@ const StudentJournal = ({
                       placeholder="—"
                       className="w-12 h-7 text-center text-sm border border-gray-300 rounded focus:border-purple-500 focus:outline-none transition-colors"
                       value={student.displayGrade}
-                      onChange={(e) => handleGradeUpdate(student.id, e.target.value)}
+                      onChange={(e) => handleGradeClick(student.id, Number(e.target.value))}
                       maxLength={2}
                       aria-label={`Оценка для ${student.name}`}
                     />

@@ -1,6 +1,6 @@
 type VoiceCommandHandler = (data: any) => void;
 
-class VoiceCommandBus {
+class CommandEventBus {
   private handlers: Map<string, Set<VoiceCommandHandler>> = new Map();
 
   // Подписаться на команду определённого типа
@@ -44,4 +44,7 @@ class VoiceCommandBus {
 }
 
 // Singleton instance
-export const voiceCommandBus = new VoiceCommandBus();
+export const commandEventBus = new CommandEventBus();
+
+// Для обратной совместимости (временно)
+export const voiceCommandBus = commandEventBus;

@@ -6,7 +6,7 @@ import { createCLUService } from '../services/CLUService';
 import { DialogManager } from '../services/dialog/DialogManager.ts';
 import { VOICE_CONFIG } from '../config/voiceConfig';
 import type { EnrichedLesson } from "../types";
-import { voiceCommandBus } from '../services/VoiceCommandBus';
+import { voiceCommandBus } from '../services/CommandEventBus.ts';
 
 export type AssistantState =
   | 'inactive'

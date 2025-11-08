@@ -3,7 +3,7 @@ import type { EnrichedLesson } from '../../types';
 import { DialogState } from './DialogState';
 import { IntentRegistry } from './IntentRegistry';
 import { SlotFiller } from './SlotFiller';
-// import type { ActionResult } from './intents/types';
+import { voiceAdapter } from '../commands/adapters/VoiceAdapter';
 
 export interface DialogResult {
   success: boolean;
@@ -135,12 +135,14 @@ export class DialogManager {
       };
     }
 
-    // Все слоты заполнены, выполнить действие
-    console.log('✅ All slots filled, executing action...');
+    // Все слоты заполнены, выполнить действие через VoiceAdapter
+    console.log('✅ All slots filled, executing command via VoiceAdapter...');
     console.log('Slots:', slots);
 
     try {
-      const result = await intentDef.action(
+      // ИЗМЕНЕНИЕ: Используем VoiceAdapter вместо прямого вызова action
+      const result = await voiceAdapter.executeVoiceCommand(
+        intentName,
         slots,
         this.state.getContext(),
         currentLesson
@@ -160,17 +162,19 @@ export class DialogManager {
         text: result.message
       });
 
-      console.log('✅ Action executed successfully');
+      console.log('✅ Command executed successfully via VoiceAdapter');
       console.groupEnd();
 
       return {
         success: result.success,
         message: result.message,
-        data: result.data
+        data: result.data,
+        needsClarification: result.needsClarification,
+        clarificationQuestion: result.clarificationQuestion
       };
 
     } catch (error) {
-      console.error('❌ Action execution failed:', error);
+      console.error('❌ Command execution failed:', error);
       console.groupEnd();
 
       return {

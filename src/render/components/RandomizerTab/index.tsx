@@ -2,17 +2,18 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Users, Shuffle } from 'lucide-react';
-import type { Lesson, SelectedGroup, Group } from '../../types';
+import type { EnrichedLesson, SelectedGroup, Group } from '../../types';
 import { GroupCard } from './GroupCard';
 import { RandomizerSettings } from './RandomizerSettings';
 import { getGridColumnsClass } from './utils';
 import { useRandomizer } from './useRandomizer';
 import { useGroupFormation } from './useGroupFormation';
-import { voiceCommandBus } from "../../services/VoiceCommandBus.ts";
+import { voiceCommandBus } from "../../services/CommandEventBus.ts";
+import { useCommands} from "../../hooks/useCommands.ts";
 
 interface RandomizerTabProps {
   selectedGroup: SelectedGroup;
-  currentLesson: Lesson | null;
+  currentLesson: EnrichedLesson | null;
   groupData: Group | null;
   className?: string;
 }
@@ -23,6 +24,15 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
   const [divisionMode, setDivisionMode] = useState<'groups' | 'people'>('groups');
   const [peoplePerGroup, setPeoplePerGroup] = useState(2);
   const [groupScores, setGroupScores] = useState<number[]>([]);
+
+  // НОВОЕ: Подключаем Command API
+  const context = useMemo(() => ({
+    classId: currentLesson?.classId,
+    groupId: currentLesson?.groupId,
+    lessonId: currentLesson?.id
+  }), [currentLesson]);
+
+  const commands = useCommands(context, currentLesson);
 
   const {
     selectedStudent,
@@ -115,6 +125,44 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
     });
   }, []);
 
+  // НОВОЕ: Обработчик кнопки "Выбрать ученика" через Command API
+  const handleRandomStudentClick = useCallback(async () => {
+    console.log('🖱️ UI: Random student button clicked');
+
+    const result = await commands.randomStudent(!includeAbsent);
+
+    if (result.success && result.data) {
+      // Вызвать локальную анимацию
+      randomizeStudent(null);
+    } else if (!result.success) {
+      console.error('❌ Random student failed:', result.message);
+    }
+  }, [commands, includeAbsent, randomizeStudent]);
+
+  // НОВОЕ: Обработчик кнопки "Разделить на группы" через Command API
+  const handleDivideGroupsClick = useCallback(async () => {
+    console.log('🖱️ UI: Divide groups button clicked');
+
+    if (divisionMode === 'groups') {
+      const result = await commands.divideByGroupCount(groupCount, !includeAbsent);
+
+      if (result.success && result.data) {
+        // Анимация уже запущена через divideIntoGroups
+        divideIntoGroups();
+      } else if (!result.success) {
+        console.error('❌ Divide groups failed:', result.message);
+      }
+    } else {
+      const result = await commands.divideByGroupSize(peoplePerGroup, !includeAbsent);
+
+      if (result.success && result.data) {
+        divideIntoGroups();
+      } else if (!result.success) {
+        console.error('❌ Divide groups failed:', result.message);
+      }
+    }
+  }, [commands, divisionMode, groupCount, peoplePerGroup, includeAbsent, divideIntoGroups]);
+
   // Очистка истории при изменении параметров фильтрации
   useEffect(() => {
     clearHistory();
@@ -178,7 +226,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
 
           <div className="flex gap-4">
             <button
-              onClick={() => randomizeStudent(null)}
+              onClick={() => handleRandomStudentClick}
               disabled={isRandomizing || availableStudents.length === 0}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
             >
@@ -197,7 +245,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
               </button>
             )}
             <button
-              onClick={divideIntoGroups}
+              onClick={handleDivideGroupsClick}
               disabled={availableStudents.length === 0 || isFormingGroups}
               className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
             >

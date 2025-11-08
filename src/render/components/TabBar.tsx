@@ -6,7 +6,7 @@ import RandomizerTab from "./RandomizerTab";
 import { SeatingChart } from "./SeatingChart.tsx";
 import TasksTab from "./TasksTab";
 import type {SelectedGroup, Lesson, Group, LessonFolder} from "../types";
-import { voiceCommandBus } from "../services/VoiceCommandBus.ts";
+import { voiceCommandBus } from "../services/CommandEventBus.ts";
 
 interface TabBarProps {
   selectedGroup: SelectedGroup | null;

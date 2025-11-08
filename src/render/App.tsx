@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-// import reactLogo from './assets/react.svg'
-// import { MessageSquare } from 'lucide-react';
 import type { SelectedGroup, Lesson, Class, EnrichedLesson } from './types';
 import './App.css';
 import TabBar from './components/TabBar';
 import VoiceAssistant from './components/VoiceAssistant';
 import Sidebar from './components/Sidebar';
+
+import { commandHandler, allCommands } from './services/commands';
+import { commandEventBus } from './services/CommandEventBus.ts';
 
 const EduAssist = () => {
   // Основные состояния
@@ -14,6 +15,167 @@ const EduAssist = () => {
   const [currentLesson, setCurrentLesson] = useState<EnrichedLesson | null>(null);
   const [allLessons, setAllLessons] = useState<EnrichedLesson[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.log('🚀 Initializing Command System...');
+
+    // Регистрируем все команды
+    commandHandler.registerMany(allCommands);
+
+    console.log('✅ Command System initialized');
+    console.log('Registered commands:', commandHandler.getAllDefinitions().map(c => c.type));
+  }, []);
+
+  /**
+   * Обработчик открытия журнала по параметрам из голосовой команды
+   * Вызывается из VoiceAssistant при команде "Открой журнал 9 В второй группы"
+   *
+   * @returns true если журнал найден и открыт, false если не найден
+   */
+  const handleOpenJournalByParams = useCallback((
+    classNumber: string,
+    classLetter: string,
+    groupNumber: string
+  ): boolean => {
+    console.group('📖 Opening Journal by Voice Parameters');
+    console.log('Parameters:', { classNumber, classLetter, groupNumber });
+
+    if (!appData) {
+      console.warn('⚠️ appData is null');
+      console.groupEnd();
+      return false;
+    }
+
+    // Поиск класса (гибкий - учитываем разные форматы: "9В", "9 В", "9 В класс")
+    const className = `${classNumber}${classLetter}`;
+    console.log('Looking for class:', className);
+
+    const cls = appData.find(c => {
+      // Нормализуем имя класса: убираем пробелы и слово "класс"
+      const normalized = c.name
+        .replace(/\s+/g, '')      // убрать все пробелы
+        .replace(/класс/gi, '')   // убрать слово "класс"
+        .toUpperCase();
+
+      const searchName = className
+        .replace(/\s+/g, '')
+        .toUpperCase();
+
+      return normalized === searchName;
+    });
+
+    if (!cls) {
+      console.warn(`⚠️ Class ${className} not found`);
+      console.log('Available classes:', appData.map(c => c.name));
+      console.groupEnd();
+      return false;
+    }
+
+    console.log('✅ Class found:', cls.name);
+
+    // Поиск группы (извлекаем номер из названия)
+    const group = cls.groups.find(g => {
+      // Извлечь номер группы из названия (например, "1 группа" -> "1", "Группа 2" -> "2")
+      const match = g.name.match(/(\d+)/);
+      const groupNum = match ? match[1] : null;
+
+      return groupNum === groupNumber;
+    });
+
+    if (!group) {
+      console.warn(`⚠️ Group ${groupNumber} not found in class ${className}`);
+      console.log('Available groups:', cls.groups.map(g => g.name));
+      console.groupEnd();
+      return false;
+    }
+
+    console.log(`✅ Opening journal: ${className} ${group.name} (groupId: ${group.id})`);
+    console.groupEnd();
+
+    // Открываем журнал через существующий обработчик
+    setSelectedGroupIds({
+      classId: cls.id,
+      groupId: group.id,
+    });
+
+    return true;
+  }, [appData]);
+
+  // Оптимистичное обновление оценки
+  const handleUpdateGrade = useCallback(async (lessonId: string, studentId: string, grade: number | null) => {
+    if (!currentLesson || currentLesson.id !== lessonId) return;
+
+    const previousLesson = currentLesson;
+
+    // Немедленно обновляем UI
+    setCurrentLesson(prev => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        students: prev.students.map(student =>
+          student.id === studentId
+            ? { ...student, grade }
+            : student
+        )
+      };
+    });
+
+    // Отправляем изменения на сервер
+    try {
+      await window.electronAPI.updateGrade(lessonId, studentId, grade);
+    } catch (error) {
+      console.error('Ошибка обновления оценки:', error);
+      setError('Не удалось сохранить оценку');
+      setCurrentLesson(previousLesson);
+    }
+  }, [currentLesson]);
+
+  useEffect(() => {
+    console.log('📡 Setting up CommandEventBus subscriptions...');
+
+    // Подписка на команду SetGrade
+    const unsubscribeGrade = commandEventBus.subscribe('grade_set', (data) => {
+      console.log('📢 CommandEventBus: grade_set received', data);
+      handleUpdateGrade(data.lessonId, data.studentId, data.grade);
+    });
+
+    // Подписка на команду OpenJournal
+    const unsubscribeJournal = commandEventBus.subscribe('journal_opened', (data) => {
+      console.log('📢 CommandEventBus: journal_opened received', data);
+      const success = handleOpenJournalByParams(
+        data.classNumber,
+        data.classLetter,
+        data.groupNumber
+      );
+      if (!success) {
+        console.error('❌ Failed to open journal:', data);
+      }
+    });
+
+    // Подписка на команду RandomStudent
+    const unsubscribeRandomStudent = commandEventBus.subscribe('random_student_selected', (data) => {
+      console.log('📢 CommandEventBus: random_student_selected received', data);
+      // RandomStudent обрабатывается внутри RandomizerTab
+      // Здесь можно добавить дополнительную логику если нужно
+    });
+
+    // Подписка на команду DivideStudents
+    const unsubscribeGroupsFormed = commandEventBus.subscribe('groups_formed', (data) => {
+      console.log('📢 CommandEventBus: groups_formed received', data);
+      // DivideStudents обрабатывается внутри RandomizerTab
+      // Здесь можно добавить дополнительную логику если нужно
+    });
+
+    return () => {
+      console.log('📡 Cleaning up CommandEventBus subscriptions...');
+      unsubscribeGrade();
+      unsubscribeJournal();
+      unsubscribeRandomStudent();
+      unsubscribeGroupsFormed();
+    };
+  }, [currentLesson, handleOpenJournalByParams, handleUpdateGrade]); // зависимость от currentLesson для handleUpdateGrade
+
 
   /**
    * Обогащает урок данными из appData
@@ -145,36 +307,6 @@ const EduAssist = () => {
     return student?.name || studentId;  // s001 -> "Акмарал А."
   }, [appData, selectedGroupIds])
 
-  // Оптимистичное обновление оценки
-  const handleUpdateGrade = useCallback(async (lessonId: string, studentId: string, grade: number | null) => {
-    if (!currentLesson || currentLesson.id !== lessonId) return;
-
-    const previousLesson = currentLesson;
-
-    // Немедленно обновляем UI
-    setCurrentLesson(prev => {
-      if (!prev) return prev;
-
-      return {
-        ...prev,
-        students: prev.students.map(student =>
-          student.id === studentId
-            ? { ...student, grade }
-            : student
-        )
-      };
-    });
-
-    // Отправляем изменения на сервер
-    try {
-      await window.electronAPI.updateGrade(lessonId, studentId, grade);
-    } catch (error) {
-      console.error('Ошибка обновления оценки:', error);
-      setError('Не удалось сохранить оценку');
-      setCurrentLesson(previousLesson);
-    }
-  }, [currentLesson]);
-
   // Оптимистичное обновление посещаемости
   const handleUpdateAttendance = useCallback(async (lessonId: string, studentId: string, attendance: boolean) => {
     if (!currentLesson || currentLesson.id !== lessonId) return;
@@ -281,81 +413,6 @@ const EduAssist = () => {
     });
 
     console.groupEnd();
-  }, [appData]);
-
-  /**
-   * Обработчик открытия журнала по параметрам из голосовой команды
-   * Вызывается из VoiceAssistant при команде "Открой журнал 9 В второй группы"
-   *
-   * @returns true если журнал найден и открыт, false если не найден
-   */
-  const handleOpenJournalByParams = useCallback((
-    classNumber: string,
-    classLetter: string,
-    groupNumber: string
-  ): boolean => {
-    console.group('📖 Opening Journal by Voice Parameters');
-    console.log('Parameters:', { classNumber, classLetter, groupNumber });
-
-    if (!appData) {
-      console.warn('⚠️ appData is null');
-      console.groupEnd();
-      return false;
-    }
-
-    // Поиск класса (гибкий - учитываем разные форматы: "9В", "9 В", "9 В класс")
-    const className = `${classNumber}${classLetter}`;
-    console.log('Looking for class:', className);
-
-    const cls = appData.find(c => {
-      // Нормализуем имя класса: убираем пробелы и слово "класс"
-      const normalized = c.name
-        .replace(/\s+/g, '')      // убрать все пробелы
-        .replace(/класс/gi, '')   // убрать слово "класс"
-        .toUpperCase();
-
-      const searchName = className
-        .replace(/\s+/g, '')
-        .toUpperCase();
-
-      return normalized === searchName;
-    });
-
-    if (!cls) {
-      console.warn(`⚠️ Class ${className} not found`);
-      console.log('Available classes:', appData.map(c => c.name));
-      console.groupEnd();
-      return false;
-    }
-
-    console.log('✅ Class found:', cls.name);
-
-    // Поиск группы (извлекаем номер из названия)
-    const group = cls.groups.find(g => {
-      // Извлечь номер группы из названия (например, "1 группа" -> "1", "Группа 2" -> "2")
-      const match = g.name.match(/(\d+)/);
-      const groupNum = match ? match[1] : null;
-
-      return groupNum === groupNumber;
-    });
-
-    if (!group) {
-      console.warn(`⚠️ Group ${groupNumber} not found in class ${className}`);
-      console.log('Available groups:', cls.groups.map(g => g.name));
-      console.groupEnd();
-      return false;
-    }
-
-    console.log(`✅ Opening journal: ${className} ${group.name} (groupId: ${group.id})`);
-    console.groupEnd();
-
-    // Открываем журнал через существующий обработчик
-    setSelectedGroupIds({
-      classId: cls.id,
-      groupId: group.id,
-    });
-
-    return true;
   }, [appData]);
 
   const handleLessonChange = (lesson: EnrichedLesson) => {
