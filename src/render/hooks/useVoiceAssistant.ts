@@ -54,6 +54,16 @@ export const useVoiceAssistant = ({ currentLesson, onOpenJournal }: UseVoiceAssi
   });
 
   const commandContext = useCommandContext();
+  const contextRef = useRef(commandContext);
+
+  useEffect(() => {
+    contextRef.current = commandContext;
+  }, [commandContext]);
+
+// Обновлять ref при каждом изменении контекста
+  useEffect(() => {
+    contextRef.current = commandContext;
+  }, [commandContext]);
 
   const isInitializedRef = useRef(false);
   const currentLessonRef = useRef<EnrichedLesson | null>(null);
@@ -241,7 +251,7 @@ export const useVoiceAssistant = ({ currentLesson, onOpenJournal }: UseVoiceAssi
             const result = await getDialogManager().process(
               cluResponse,
               text,
-              commandContext // ← передаем актуальный контекст
+              contextRef.current // ← передаем актуальный контекст
             );
 
             console.log('📊 Command Execution Result:', {
@@ -388,7 +398,7 @@ export const useVoiceAssistant = ({ currentLesson, onOpenJournal }: UseVoiceAssi
         error: error instanceof Error ? error.message : 'Ошибка записи'
       }));
     }
-  }, [onOpenJournal, startAudioCapture, stopCommandRecording, returnToWaitingMode, getDialogManager]);
+  }, [startAudioCapture, stopCommandRecording, getDialogManager, commandContext, onOpenJournal, returnToWaitingMode]);
 
 
   // Обработка детекции wake-word

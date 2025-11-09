@@ -1,12 +1,12 @@
 // src/render/components/RandomizerTab/useRandomizer.ts
 
 import { useState, useMemo, useCallback, useRef } from 'react';
-import type { Lesson, Group } from '../../types';
+import type { EnrichedLesson, Group } from '../../types';
 // import { calculateTargetSizes } from './utils';
 import { ANIMATION_DELAYS, RANDOMIZE_ITERATIONS } from './constants';
 
 interface UseRandomizerProps {
-  currentLesson: Lesson | null;
+  currentLesson: EnrichedLesson | null;
   groupData: Group | null;
   includeAbsent: boolean;
 }

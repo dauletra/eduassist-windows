@@ -1,5 +1,19 @@
 import type { EnrichedLesson } from '../../types';
-import type { CommandContext } from '../dialog/DialogState';
+
+/**
+ * Единый контекст команд для всего приложения
+ * Используется в:
+ * - Dialog Manager (для обработки голосовых команд)
+ * - Command Executor (для выполнения команд)
+ * - React Context (для передачи через UI)
+ */
+export interface DialogContext {
+  classId?: string;
+  groupId?: string;
+  lessonId?: string;
+  currentLesson: EnrichedLesson | null;
+  hasConflict?: (id1: string, id2: string) => boolean; // для алгоритма деления на группы
+}
 
 /**
  * Источник команды
@@ -24,7 +38,7 @@ export interface CommandResult {
   data?: any; // данные для UI (группы, выбранный ученик и т.д.)
   needsClarification?: boolean; // нужно ли уточнение
   clarificationQuestion?: string; // вопрос для уточнения
-  updateContext?: Partial<CommandContext>; // обновления контекста
+  updateContext?: Partial<DialogContext>; // обновления контекста
 }
 
 /**
@@ -36,7 +50,7 @@ export interface CommandParamDefinition {
   entityCategory?: string;
   required: boolean;
   description?: string;
-  validate?: (value: any, context: CommandContext, lesson: EnrichedLesson | null) => boolean | string;
+  validate?: (value: any, context: DialogContext, lesson: EnrichedLesson | null) => boolean | string;
   transform?: (value: any) => any;
   default?: any;
 }
@@ -56,7 +70,7 @@ export interface CommandDefinition {
    */
   execute: (
     params: Record<string, any>,
-    context: CommandContext,
+    context: DialogContext,
     currentLesson: EnrichedLesson | null
   ) => Promise<CommandResult>;
 }

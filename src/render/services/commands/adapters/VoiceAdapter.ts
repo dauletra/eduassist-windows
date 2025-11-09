@@ -1,5 +1,5 @@
 import { commandExecutor } from '../CommandExecutor';
-import type { CommandContext } from '../../dialog/DialogState';
+import type { DialogContext } from '../types';
 import type { EnrichedLesson } from '../../../types';
 import type { CommandResult } from '../types';
 
@@ -7,7 +7,7 @@ export class VoiceAdapter {
   async executeVoiceCommand(
     intentName: string,
     slots: Record<string, any>,
-    context: CommandContext,
+    context: DialogContext,
     currentLesson: EnrichedLesson | null
   ): Promise<CommandResult> {
     console.log('🎙️ VoiceAdapter: executing', intentName);

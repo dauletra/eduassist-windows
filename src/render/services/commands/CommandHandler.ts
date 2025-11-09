@@ -1,5 +1,5 @@
 import type { EnrichedLesson } from '../../types';
-import type { DialogContext } from '../dialog/DialogManager';
+import type { DialogContext } from './types';
 import type {
   Command,
   CommandResult,
@@ -104,35 +104,13 @@ export class CommandHandler {
         };
       }
 
-      // 3. Валидировать параметры
-      const validationResult = this.validateParams(
-        definition,
-        command.params,
-        context,
-        currentLesson
-      );
-
-      if (!validationResult.valid) {
-        console.error('❌ Validation failed:', validationResult.errors);
-        console.groupEnd();
-
-        return {
-          success: false,
-          needsClarification: true,
-          clarificationQuestion: Object.entries(validationResult.errors)
-            .map(([param, error]) => `${param}: ${error}`)
-            .join(', '),
-          message: 'Ошибка валидации параметров'
-        };
-      }
-
-      // 4. Трансформировать параметры
-      const transformedParams = this.transformParams(definition, command.params);
+      // 4. Применяем дефолтные значения
+      const finalParams = this.applyDefaults(definition, command.params);
 
       // 5. Выполнить команду
       console.log('✅ All checks passed, executing command...');
       const result = await definition.execute(
-        transformedParams,
+        finalParams,
         context,
         currentLesson
       );
@@ -174,73 +152,24 @@ export class CommandHandler {
   }
 
   /**
-   * Валидировать параметры команды
+   * Применить значения по умолчанию для необязательных параметров
    */
-  private validateParams(
-    definition: CommandDefinition,
-    params: Record<string, any>,
-    context: DialogContext,
-    currentLesson: EnrichedLesson | null
-  ): { valid: boolean; errors: Record<string, string> } {
-    const errors: Record<string, string> = {};
-
-    for (const paramDef of definition.params) {
-      const value = params[paramDef.name];
-
-      // Проверить обязательные параметры
-      if (paramDef.required && (value === undefined || value === null)) {
-        errors[paramDef.name] = 'Обязательный параметр отсутствует';
-        continue;
-      }
-
-      // Пропустить необязательные пустые параметры
-      if (!paramDef.required && (value === undefined || value === null)) {
-        continue;
-      }
-
-      // Кастомная валидация
-      if (paramDef.validate) {
-        const validationResult = paramDef.validate(value, context, currentLesson);
-
-        if (validationResult !== true) {
-          errors[paramDef.name] = typeof validationResult === 'string'
-            ? validationResult
-            : 'Невалидное значение';
-        }
-      }
-    }
-
-    return {
-      valid: Object.keys(errors).length === 0,
-      errors
-    };
-  }
-
-  /**
-   * Трансформировать параметры команды
-   */
-  private transformParams(
+  private applyDefaults(
     definition: CommandDefinition,
     params: Record<string, any>
   ): Record<string, any> {
-    const transformed: Record<string, any> = { ...params };
+    const result = { ...params };
 
     for (const paramDef of definition.params) {
-      const value = params[paramDef.name];
-
-      // Применить значение по умолчанию
-      if ((value === undefined || value === null) && paramDef.default !== undefined) {
-        transformed[paramDef.name] = paramDef.default;
-        continue;
-      }
-
-      // Применить трансформацию
-      if (value !== undefined && value !== null && paramDef.transform) {
-        transformed[paramDef.name] = paramDef.transform(value);
+      // Применить значение по умолчанию только если параметр необязательный и не передан
+      if (!paramDef.required &&
+        (result[paramDef.name] === undefined || result[paramDef.name] === null) &&
+        paramDef.default !== undefined) {
+        result[paramDef.name] = paramDef.default;
       }
     }
 
-    return transformed;
+    return result;
   }
 
   /**

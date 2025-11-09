@@ -1,17 +1,6 @@
 import type { CommandDefinition } from '../types';
-import type { EnrichedLessonStudent } from '../../../types';
-
-/**
- * Утилита для перемешивания массива (Fisher-Yates shuffle)
- */
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
+// import type { EnrichedLessonStudent } from '../../../types';
+import { createBalancedGroups, calculateTargetSizes } from "./groupFormationAlgorithm.ts";
 
 /**
  * Команда деления учеников на N групп
@@ -100,16 +89,15 @@ export const divideByGroupCountCommand: CommandDefinition = {
       };
     }
 
-    // Перемешать учеников
-    const shuffled = shuffleArray(students);
+    // Получить функцию проверки конфликтов из контекста
+    const hasConflict = _context.hasConflict || (() => false);
 
-    // Создать пустые группы
-    const groups: EnrichedLessonStudent[][] = Array.from({ length: groupCount }, () => []);
+// Вычислить целевые размеры групп
+    const targetSizes = calculateTargetSizes(students.length, 'groups', groupCount, 0);
 
-    // Распределить учеников по группам равномерно
-    shuffled.forEach((student, idx) => {
-      groups[idx % groupCount].push(student);
-    });
+// Создать сбалансированные группы с учетом конфликтов
+    const result = createBalancedGroups(students, targetSizes, hasConflict);
+    const groups = result.groups;
 
     // Сформировать сообщение
     const groupWord = groupCount === 2 ? 'группы' :
@@ -219,14 +207,15 @@ export const divideByGroupSizeCommand: CommandDefinition = {
       };
     }
 
-    // Перемешать учеников
-    const shuffled = shuffleArray(students);
+    // Получить функцию проверки конфликтов из контекста
+    const hasConflict = _context.hasConflict || (() => false);
 
-    // Разделить на группы
-    const groups: EnrichedLessonStudent[][] = [];
-    for (let i = 0; i < shuffled.length; i += groupSize) {
-      groups.push(shuffled.slice(i, i + groupSize));
-    }
+// Вычислить целевые размеры групп
+    const targetSizes = calculateTargetSizes(students.length, 'people', 0, groupSize);
+
+// Создать сбалансированные группы с учетом конфликтов
+    const result = createBalancedGroups(students, targetSizes, hasConflict);
+    const groups = result.groups;
 
     // Сформировать сообщение
     const groupsCount = groups.length;

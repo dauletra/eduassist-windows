@@ -1,16 +1,9 @@
 import type { CLUResponse } from '../CLUService';
-import type { EnrichedLesson } from '../../types';
 import { DialogState } from './DialogState';
 import { IntentRegistry } from './IntentRegistry';
 import { SlotFiller } from './SlotFiller';
 import { voiceAdapter } from '../commands/adapters/VoiceAdapter';
-
-export interface DialogContext {
-  classId?: string;
-  groupId?: string;
-  lessonId?: string;
-  currentLesson: EnrichedLesson | null;
-}
+import type { DialogContext } from '../commands';
 
 export interface DialogResult {
   success: boolean;

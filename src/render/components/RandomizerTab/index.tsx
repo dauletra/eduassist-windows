@@ -25,7 +25,6 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
   const [peoplePerGroup, setPeoplePerGroup] = useState(2);
   const [groupScores, setGroupScores] = useState<number[]>([]);
 
-
   const commands = useCommands();
 
   const {
@@ -126,12 +125,12 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
     const result = await commands.randomStudent(!includeAbsent);
 
     if (result.success && result.data) {
-      // Вызвать локальную анимацию
-      randomizeStudent(null);
+      // Команда сама отправит событие через VoiceAdapter
+      // Локальная анимация запустится автоматически через подписку
     } else if (!result.success) {
       console.error('❌ Random student failed:', result.message);
     }
-  }, [commands, includeAbsent, randomizeStudent]);
+  }, [commands, includeAbsent]);
 
   // НОВОЕ: Обработчик кнопки "Разделить на группы" через Command API
   const handleDivideGroupsClick = useCallback(async () => {
@@ -140,22 +139,18 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
     if (divisionMode === 'groups') {
       const result = await commands.divideByGroupCount(groupCount, !includeAbsent);
 
-      if (result.success && result.data) {
-        // Анимация уже запущена через divideIntoGroups
-        divideIntoGroups();
-      } else if (!result.success) {
+      if (!result.success) {
         console.error('❌ Divide groups failed:', result.message);
       }
+      // UI обновится автоматически через событие groups_formed
     } else {
       const result = await commands.divideByGroupSize(peoplePerGroup, !includeAbsent);
 
-      if (result.success && result.data) {
-        divideIntoGroups();
-      } else if (!result.success) {
+      if (!result.success) {
         console.error('❌ Divide groups failed:', result.message);
       }
     }
-  }, [commands, divisionMode, groupCount, peoplePerGroup, includeAbsent, divideIntoGroups]);
+  }, [commands, divisionMode, groupCount, peoplePerGroup, includeAbsent]);
 
   // Очистка истории при изменении параметров фильтрации
   useEffect(() => {
@@ -163,19 +158,21 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
   }, [includeAbsent, clearHistory]);
 
   useEffect(() => {
-    // Обработчик команды random_student
-    const unsubscribe = voiceCommandBus.subscribe('random_student', (data) => {
-      console.log('🎲 Voice command: random_student received', data);
+    const unsubscribe = voiceCommandBus.subscribe('random_student_selected', (data) => {
+      console.log('🎲 Voice command: random_student_selected received', data);
 
-      // Программно вызвать случайный выбор
-      randomizeStudent(null);
+      if (data && data.studentName) {
+        // Установить выбранного ученика напрямую (без анимации при голосовой команде)
+        if (!hasGroups) {
+          setSelectedStudent(data.studentName);
+        }
+      }
     });
 
-    // Cleanup: отписаться при размонтировании
     return () => {
       unsubscribe();
     };
-  }, [randomizeStudent]);
+  }, [hasGroups, setSelectedStudent]);
 
   useEffect(() => {
     if (!hasGroups && selectedStudent && !availableStudents.some(s => s.name === selectedStudent)) {
@@ -185,6 +182,30 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
       setSelectedGroupStudents([]);
     }
   }, [includeAbsent, selectedStudent, selectedGroupStudents, availableStudents, hasGroups, setSelectedStudent, setSelectedGroupStudents]);
+
+  // Подписка на события формирования групп
+  useEffect(() => {
+    const unsubscribeDivide = voiceCommandBus.subscribe('groups_formed', (data) => {
+      console.log('👥 Voice command: groups_formed received', data);
+
+      if (data && data.groups) {
+        // Преобразовать группы из формата команды в формат UI
+        const groupsAsNames = data.groups.map((group: any[]) =>
+          group.map((student: any) => student.name)
+        );
+
+        // Запустить анимацию с полученными группами
+        handleGroupsCreated(groupsAsNames, new Array(groupsAsNames.length).fill(0));
+
+        // Показать анимацию
+        divideIntoGroups();
+      }
+    });
+
+    return () => {
+      unsubscribeDivide();
+    };
+  }, [handleGroupsCreated, divideIntoGroups]);
 
   if (!currentLesson) {
     return (

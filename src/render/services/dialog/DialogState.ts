@@ -1,10 +1,4 @@
-// import type {Student} from "../../../electron/shared-types.ts";
-
-export interface CommandContext {
-  classId?: string;
-  groupId?: string;
-  lessonId?: string;
-}
+// import type { CommandContext } from '../commands/types';
 
 export interface DialogTurn {
   timestamp: number;

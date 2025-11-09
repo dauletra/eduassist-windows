@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import type { Student } from '../../types';
-import { calculateTargetSizes } from './utils';
+import { createBalancedGroups, calculateTargetSizes } from '../../services/commands/definitions/groupFormationAlgorithm';
 import { ANIMATION_DELAYS } from './constants';
 
 interface UseGroupFormationProps {
@@ -25,81 +25,6 @@ export function useGroupFormation({
   const [isFormingGroups, setIsFormingGroups] = useState(false);
   const [animatingStudent, setAnimatingStudent] = useState<string | null>(null);
 
-  const countConflicts = useCallback((groups: Student[][]): number => {
-    let conflicts = 0;
-    for (const group of groups) {
-      for (let i = 0; i < group.length; i++) {
-        for (let j = i + 1; j < group.length; j++) {
-          if (hasConflict(group[i].id, group[j].id)) {
-            conflicts++;
-          }
-        }
-      }
-    }
-    return conflicts;
-  }, [hasConflict]);
-
-  const createBalancedGroups = useCallback((students: Student[]): { groups: Student[][], conflicts: number } => {
-    const targetSizes = calculateTargetSizes(students.length, divisionMode, groupCount, peoplePerGroup);
-    const totalGroups = targetSizes.length;
-    const groups: Student[][] = Array(totalGroups).fill(null).map(() => []);
-    const shuffled = [...students].sort(() => Math.random() - 0.5);
-
-    const placeStudent = (index: number): boolean => {
-      if (index === shuffled.length) return true;
-      const student = shuffled[index];
-
-      for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-        if (groups[groupIndex].length >= targetSizes[groupIndex]) continue;
-
-        let hasConflictInGroup = false;
-        for (const member of groups[groupIndex]) {
-          if (hasConflict(student.id, member.id)) {
-            hasConflictInGroup = true;
-            break;
-          }
-        }
-
-        if (!hasConflictInGroup) {
-          groups[groupIndex].push(student);
-          if (placeStudent(index + 1)) return true;
-          groups[groupIndex].pop();
-        }
-      }
-      return false;
-    };
-
-    const success = placeStudent(0);
-
-    if (!success) {
-      groups.forEach(g => g.length = 0);
-      for (const student of shuffled) {
-        let bestGroupIndex = 0;
-        let minConflicts = Infinity;
-        let minSize = Infinity;
-
-        for (let i = 0; i < groups.length; i++) {
-          if (groups[i].length >= targetSizes[i]) continue;
-
-          let conflicts = 0;
-          for (const member of groups[i]) {
-            if (hasConflict(student.id, member.id)) conflicts++;
-          }
-
-          if (conflicts < minConflicts || (conflicts === minConflicts && groups[i].length < minSize)) {
-            minConflicts = conflicts;
-            minSize = groups[i].length;
-            bestGroupIndex = i;
-          }
-        }
-        groups[bestGroupIndex].push(student);
-      }
-    }
-
-    const conflictsCount = countConflicts(groups);
-    return { groups: groups.filter(g => g.length > 0), conflicts: conflictsCount };
-  }, [divisionMode, groupCount, peoplePerGroup, hasConflict, countConflicts]);
-
   const divideIntoGroups = useCallback(async () => {
     if (!availableStudents.length) return;
 
@@ -110,7 +35,13 @@ export function useGroupFormation({
     await new Promise(resolve => setTimeout(resolve, ANIMATION_DELAYS.MESSAGE_DISPLAY));
 
     // Шаг 2: Создание сбалансированных групп
-    const result = createBalancedGroups(availableStudents);
+    const targetSizes = calculateTargetSizes(
+      availableStudents.length,
+      divisionMode,
+      groupCount,
+      peoplePerGroup
+    );
+    const result = createBalancedGroups(availableStudents, targetSizes, hasConflict);
 
     // Шаг 3: Показываем результат анализа
     if (result.conflicts === 0) {
@@ -173,7 +104,7 @@ export function useGroupFormation({
 
     setAnimatingStudent(null);
     setIsFormingGroups(false);
-  }, [availableStudents, createBalancedGroups, onGroupsCreated]);
+  }, [availableStudents, divisionMode, groupCount, hasConflict, onGroupsCreated, peoplePerGroup]);
 
   return {
     isFormingGroups,

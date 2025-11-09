@@ -2,7 +2,7 @@
 
 import { commandHandler } from './CommandHandler';
 import { commandEventBus } from '../CommandEventBus';
-import type { CommandContext } from '../dialog/DialogState';
+import type { DialogContext } from './types';
 import type { EnrichedLesson } from '../../types';
 import type { Command, CommandResult, CommandSource } from './types';
 
@@ -26,7 +26,7 @@ export class CommandExecutor {
     type: string,
     params: Record<string, any>,
     source: CommandSource,
-    context: CommandContext,
+    context: DialogContext,
     currentLesson: EnrichedLesson | null
   ): Promise<CommandResult> {
     console.group(`🎯 CommandExecutor.execute() [${source}]`);
@@ -48,6 +48,11 @@ export class CommandExecutor {
       if (result.success && result.data) {
         console.log('📢 Publishing event:', result.data.type);
         commandEventBus.emit(result.data.type, result.data);
+      }
+
+      if (result.updateContext) {
+        console.log('🔄 Publishing context_changed:', result.updateContext);
+        commandEventBus.emit('context_changed', result.updateContext);
       }
 
       console.log(`✅ Command executed from ${source}:`, result);

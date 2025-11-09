@@ -416,7 +416,7 @@ const EduAssist = () => {
   };
 
   return (
-    <CommandProvider currentLesson={currentLesson}>
+    <CommandProvider currentLesson={currentLesson} selectedGroup={selectedGroup}>
       <div className="h-screen bg-gray-50 flex overflow-hidden">
 
       {/*Добавить уведомление об ошибке*/}
