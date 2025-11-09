@@ -1,11 +1,10 @@
 import { useCallback, useMemo } from 'react';
-import { commandExecutor } from '../services/commands/CommandExecutor';
-import { useCommandContext } from '../contexts/CommandContext';
+import { useCommandExecutor } from '../contexts/CommandContext';
 
 /**
  * Хук для удобного использования команд из UI компонентов
  *
- * Автоматически получает context и currentLesson из React Context
+ * Использует CommandExecutor из React Context
  * Все команды выполняются с source: 'ui'
  *
  * @example
@@ -14,14 +13,7 @@ import { useCommandContext } from '../contexts/CommandContext';
  * commands.randomStudent(true);
  */
 export function useCommands() {
-  // Получаем context автоматически из React Context
-  const { classId, groupId, lessonId, currentLesson } = useCommandContext();
-
-  const context = useMemo(() => ({
-    classId,
-    groupId,
-    lessonId
-  }), [classId, groupId, lessonId]);
+  const commandExecutor = useCommandExecutor();
 
   /**
    * Поставить оценку ученику
@@ -31,12 +23,10 @@ export function useCommands() {
       return commandExecutor.execute(
         'SetGrade',
         { studentName: studentId, numberValue: grade },
-        'ui',
-        context,
-        currentLesson
+        'ui'
       );
     },
-    [context, currentLesson]
+    [commandExecutor]
   );
 
   /**
@@ -47,12 +37,10 @@ export function useCommands() {
       return commandExecutor.execute(
         'OpenJournal',
         { classNumber, classLetter, groupNumber },
-        'ui',
-        context,
-        currentLesson
+        'ui'
       );
     },
-    [context, currentLesson]
+    [commandExecutor]
   );
 
   /**
@@ -63,12 +51,10 @@ export function useCommands() {
       return commandExecutor.execute(
         'RandomStudent',
         { onlyPresent },
-        'ui',
-        context,
-        currentLesson
+        'ui'
       );
     },
-    [context, currentLesson]
+    [commandExecutor]
   );
 
   /**
@@ -79,12 +65,10 @@ export function useCommands() {
       return commandExecutor.execute(
         'DivideByGroupCount',
         { numberValue: groupCount, onlyPresent },
-        'ui',
-        context,
-        currentLesson
+        'ui'
       );
     },
-    [context, currentLesson]
+    [commandExecutor]
   );
 
   /**
@@ -95,12 +79,10 @@ export function useCommands() {
       return commandExecutor.execute(
         'DivideByGroupSize',
         { numberValue: groupSize, onlyPresent },
-        'ui',
-        context,
-        currentLesson
+        'ui'
       );
     },
-    [context, currentLesson]
+    [commandExecutor]
   );
 
   return useMemo(

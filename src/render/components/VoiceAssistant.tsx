@@ -1,15 +1,13 @@
+// components/VoiceAssistant.tsx
 import React, { useEffect } from 'react';
-import { Mic, MicOff, WifiOff, HelpCircle, MessageCircle, Play,
-          MessageSquare, Loader2 } from 'lucide-react';
-import { useVoiceAssistant } from '../hooks/useVoiceAssistant';
-import type { Lesson } from "../types";
+import { Mic, MicOff, WifiOff, HelpCircle, MessageCircle, Play, MessageSquare, Loader2 } from 'lucide-react';
+import { useIsolatedVoiceAssistant } from '../hooks/useIsolatedVoiceAssistant';
 
 interface VoiceAssistantProps {
-  currentLesson: Lesson | null;
-  onOpenJournal: (classNumber: string, classLetter: string, groupNumber: string) => boolean;
+  className?: string;
 }
 
-export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ currentLesson, onOpenJournal }) => {
+export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ className = '' }) => {
   const ASSISTANT_NAME = 'AI-Maral';
 
   const {
@@ -25,7 +23,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ currentLesson, o
     stop,
     startManualRecording,
     stopManualRecording
-  } = useVoiceAssistant({ currentLesson, onOpenJournal });
+  } = useIsolatedVoiceAssistant();
 
   // Автостарт при монтировании
   useEffect(() => {
@@ -34,7 +32,6 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ currentLesson, o
       stop();
     };
   }, [start, stop]);
-
 
   // TODO: Убрать после тестирования
   const isInternetConnected = true;
@@ -155,7 +152,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ currentLesson, o
       {hasDialogHistory && (
         <button
           onClick={handleOpenDialogHistory}
-          className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200 opacity-60 hover:opacity-100 z-20"
+          className={`absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200 opacity-60 hover:opacity-100 z-20 ${className}`}
           title="История диалогов"
           aria-label="Открыть историю диалогов"
         >

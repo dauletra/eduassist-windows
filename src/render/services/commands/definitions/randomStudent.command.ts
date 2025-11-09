@@ -1,4 +1,5 @@
 import type { CommandDefinition } from '../types';
+import { COMMAND_EVENTS } from '../types';
 
 /**
  * Команда случайного выбора ученика из присутствующих
@@ -70,7 +71,17 @@ export const randomStudentCommand: CommandDefinition = {
         studentId: selectedStudent.id,
         studentName: selectedStudent.name,
         totalCandidates: candidateStudents.length
-      }
+      },
+      // Публикуем событие о выборе ученика
+      events: [
+        {
+          type: COMMAND_EVENTS.STUDENT_SELECTED,
+          payload: {
+            studentId: selectedStudent.id,
+            studentName: selectedStudent.name
+          }
+        }
+      ]
     };
   }
 };

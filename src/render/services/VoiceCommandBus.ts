@@ -1,0 +1,52 @@
+// services/VoiceCommandBus.ts
+type VoiceEvent =
+  | 'command-recognized'
+  | 'assistant-question'
+  | 'assistant-message'
+  | 'voice-error'
+  | 'state-changed';
+
+interface VoiceEventMap {
+  'command-recognized': {
+    text: string;
+    intent: string;
+    entities: any[];
+    cluResponse: any;
+  };
+  'assistant-question': string | null;
+  'assistant-message': string | null;
+  'voice-error': string | null;
+  'state-changed': string;
+}
+
+type Listener<T extends VoiceEvent> = (data: VoiceEventMap[T]) => void;
+
+export class VoiceCommandBus {
+  private listeners: Partial<{ [K in VoiceEvent]: Listener<K>[] }> = {};
+
+  publish<T extends VoiceEvent>(event: T, data: VoiceEventMap[T]): void {
+    const eventListeners = this.listeners[event] as Listener<T>[];
+    if (eventListeners) {
+      eventListeners.forEach(listener => listener(data));
+    }
+  }
+
+  subscribe<T extends VoiceEvent>(event: T, listener: Listener<T>): () => void {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event]!.push(listener);
+
+    return () => this.unsubscribe(event, listener);
+  }
+
+  unsubscribe<T extends VoiceEvent>(event: T, listener: Listener<T>): void {
+    const eventListeners = this.listeners[event];
+    if (eventListeners) {
+      this.listeners[event] = eventListeners.filter(l => l !== listener) as any;
+    }
+  }
+}
+
+// Singleton instance
+export const voiceCommandBus = new VoiceCommandBus();

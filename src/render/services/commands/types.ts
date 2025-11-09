@@ -30,15 +30,44 @@ export interface Command {
 }
 
 /**
+ * События команд - что произошло после выполнения
+ */
+export interface CommandEvent {
+  type: string;
+  payload: any;
+}
+
+/**
+ * Типы событий команд
+ */
+export const COMMAND_EVENTS = {
+  // Контекст
+  JOURNAL_OPENED: 'journal_opened',
+
+  // Оценки
+  GRADE_SET: 'grade_set',
+
+  // Ученики
+  STUDENT_SELECTED: 'student_selected',
+  STUDENTS_DIVIDED: 'students_divided',
+
+  // Уроки
+  LESSON_UPDATED: 'lesson_updated',
+
+  // UI
+  VIEW_CHANGED: 'view_changed'
+} as const;
+
+/**
  * Результат выполнения команды
  */
 export interface CommandResult {
   success: boolean;
   message: string;
   data?: any; // данные для UI (группы, выбранный ученик и т.д.)
+  events?: CommandEvent[]; // События, которые произошли
   needsClarification?: boolean; // нужно ли уточнение
   clarificationQuestion?: string; // вопрос для уточнения
-  updateContext?: Partial<DialogContext>; // обновления контекста
 }
 
 /**

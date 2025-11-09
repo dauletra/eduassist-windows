@@ -1,26 +1,22 @@
-import { commandExecutor } from '../CommandExecutor';
-import type { DialogContext } from '../types';
-import type { EnrichedLesson } from '../../../types';
+// VoiceAdapter.ts
+import type { CommandExecutor } from '../CommandExecutor';
 import type { CommandResult } from '../types';
 
 export class VoiceAdapter {
+  // @ts-ignore
+  constructor(private commandExecutor: CommandExecutor) {}
+
   async executeVoiceCommand(
     intentName: string,
-    slots: Record<string, any>,
-    context: DialogContext,
-    currentLesson: EnrichedLesson | null
+    slots: Record<string, any>
   ): Promise<CommandResult> {
     console.log('🎙️ VoiceAdapter: executing', intentName);
 
-    // Просто делегируем в CommandExecutor с source: 'voice'
-    return commandExecutor.execute(
+    // CommandExecutor сам получит контекст через callback
+    return this.commandExecutor.execute(
       intentName,
       slots,
-      'voice',
-      context,
-      currentLesson
+      'voice'
     );
   }
 }
-
-export const voiceAdapter = new VoiceAdapter();

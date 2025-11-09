@@ -1,9 +1,11 @@
+// DialogManager.ts
 import type { CLUResponse } from '../CLUService';
 import { DialogState } from './DialogState';
 import { IntentRegistry } from './IntentRegistry';
 import { SlotFiller } from './SlotFiller';
-import { voiceAdapter } from '../commands/adapters/VoiceAdapter';
+import { VoiceAdapter } from '../commands/adapters/VoiceAdapter';
 import type { DialogContext } from '../commands';
+import type { CommandExecutor } from '../commands/CommandExecutor';
 
 export interface DialogResult {
   success: boolean;
@@ -17,11 +19,14 @@ export class DialogManager {
   private state: DialogState;
   private registry: IntentRegistry;
   private slotFiller: SlotFiller;
+  private voiceAdapter: VoiceAdapter;
 
-  constructor() {
+  // @ts-ignore
+  constructor(private commandExecutor: CommandExecutor) {
     this.state = new DialogState();
     this.registry = new IntentRegistry();
     this.slotFiller = new SlotFiller();
+    this.voiceAdapter = new VoiceAdapter(this.commandExecutor);
   }
 
   /**
@@ -144,13 +149,13 @@ export class DialogManager {
     console.log('✅ All slots filled, executing command via VoiceAdapter...');
     console.log('Slots:', slots);
 
+
+
     try {
       // Выполнить команду через VoiceAdapter
-      const result = await voiceAdapter.executeVoiceCommand(
+      const result = await this.voiceAdapter.executeVoiceCommand(
         intentName,
-        slots,
-        context, // Передаём актуальный контекст
-        context.currentLesson
+        slots
       );
 
       // Очистить активный intent

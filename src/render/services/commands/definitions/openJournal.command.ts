@@ -1,4 +1,5 @@
 import type { CommandDefinition } from '../types';
+import { COMMAND_EVENTS } from '../types';
 
 /**
  * Команда открытия журнала класса
@@ -92,6 +93,7 @@ export const openJournalCommand: CommandDefinition = {
 
     // Формируем идентификаторы
     const classId = `${classNumber}${classLetter}`;
+    const groupId = `${classNumber}${classLetter}-${groupNumber}`;
     const displayName = `${classNumber}${classLetter} ${groupNumber} группа`;
 
     return {
@@ -101,13 +103,20 @@ export const openJournalCommand: CommandDefinition = {
         type: 'journal_opened',
         classNumber,
         classLetter,
-        groupNumber
+        groupNumber,
+        displayName
       },
-      // Обновляем контекст для последующих команд
-      updateContext: {
-        classId,
-        groupId: displayName
-      }
+      // Публикуем событие об открытии журнала
+      events: [
+        {
+          type: COMMAND_EVENTS.JOURNAL_OPENED,
+          payload: {
+            classId,
+            groupId,
+            lessonId: _currentLesson?.id
+          }
+        }
+      ]
     };
   }
 };

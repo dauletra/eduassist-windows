@@ -1,43 +1,85 @@
-import { createContext, useContext, useMemo, useState, useEffect } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type {EnrichedLesson, SelectedGroup} from '../types';
 import type { DialogContext } from '../services/commands';
-import { commandEventBus } from '../services/CommandEventBus';
+import { CommandExecutor } from '../services/commands/CommandExecutor';
+import { EventProcessor } from '../services/commands/EventProcessor';
 
 /**
  * React Context для глобального состояния команд
  */
-const CommandContext = createContext<DialogContext | null>(null);
+interface CommandContextValue {
+  context: DialogContext;
+  commandExecutor: CommandExecutor;
+}
+
+const CommandContext = createContext<CommandContextValue | null>(null);
 
 /**
  * Provider для CommandContext
- * Оборачивает приложение и предоставляет доступ к текущему состоянию
+ * Создаёт единственный экземпляр CommandExecutor с EventProcessor
  */
 interface CommandProviderProps {
   children: ReactNode;
   currentLesson: EnrichedLesson | null;
   selectedGroup: SelectedGroup | null;
+  setCurrentLesson: (updater: (prev: EnrichedLesson | null) => EnrichedLesson | null) => void;
 }
 
-export function CommandProvider({ children, currentLesson, selectedGroup }: CommandProviderProps) {
-  const value: DialogContext = useMemo(() =>({
-    classId: selectedGroup?.classId,
-    groupId: selectedGroup?.groupId,
-    lessonId: currentLesson?.id,
-    currentLesson
-  }), [selectedGroup, currentLesson]);
+export function CommandProvider({
+                                  children,
+                                  currentLesson,
+                                  selectedGroup,
+                                  setCurrentLesson
+                                }: CommandProviderProps) {
+  // Внутреннее состояние контекста (может быть изменено командами)
+  const [contextState, setContextState] = useState<DialogContext>({currentLesson: null});
 
-  const [, setContextOverride] = useState<Partial<DialogContext> | null>(null);
+  // Объединённый контекст: props + состояние от команд
+  const context: DialogContext = useMemo(() => ({
+    classId: contextState.classId ?? selectedGroup?.classId,
+    groupId: contextState.groupId ?? selectedGroup?.groupId,
+    lessonId: contextState.lessonId ?? currentLesson?.id,
+    currentLesson,
+    hasConflict: contextState.hasConflict
+  }), [contextState, selectedGroup, currentLesson]);
 
-  useEffect(() => {
-    const unsubscribe = commandEventBus.subscribe('context_changed', (updates) => {
-      setContextOverride(prev => ({
-        ...prev,
-        ...updates  // Просто мержим любые обновления
-      }));
-    });
-    return unsubscribe;
-  }, []);
+  // Создать EventProcessor и CommandExecutor
+  const commandExecutor = useMemo(() => {
+    console.log('🏗️ Creating CommandExecutor with EventProcessor');
+
+    // EventProcessor обновляет React состояние
+    const eventProcessor = new EventProcessor(
+      (updater) => setContextState(updater),
+      (updater) => setCurrentLesson(updater)
+    );
+
+    // Создаём ссылки которые можно обновлять
+    const contextRef = { current: context };
+    const lessonRef = { current: currentLesson };
+
+    // CommandExecutor получает контекст через callback из ref
+    const executor = new CommandExecutor(
+      () => contextRef.current,
+      () => lessonRef.current,
+      eventProcessor
+    );
+
+    // Сохраняем ссылки для обновления
+    (executor as any).contextRef = contextRef;
+    (executor as any).lessonRef = lessonRef;
+
+    return executor;
+  }, [context, currentLesson, setCurrentLesson]); // setCurrentLesson стабилен
+
+  // Обновляем ссылки на актуальные значения при каждом рендере
+  (commandExecutor as any).contextRef.current = context;
+  (commandExecutor as any).lessonRef.current = currentLesson;
+
+  const value: CommandContextValue = useMemo(() => ({
+    context,
+    commandExecutor
+  }), [context, commandExecutor]);
 
   return (
     <CommandContext.Provider value={value}>
@@ -48,14 +90,28 @@ export function CommandProvider({ children, currentLesson, selectedGroup }: Comm
 
 /**
  * Хук для получения контекста команд
- * Выбрасывает ошибку если используется вне Provider
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useCommandContext(): DialogContext {
-  const context = useContext(CommandContext);
+  const ctx = useContext(CommandContext);
 
-  if (context === null) {
+  if (ctx === null) {
     throw new Error('useCommandContext must be used within CommandProvider');
   }
 
-  return context;
+  return ctx.context;
+}
+
+/**
+ * Хук для получения CommandExecutor
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useCommandExecutor(): CommandExecutor {
+  const ctx = useContext(CommandContext);
+
+  if (ctx === null) {
+    throw new Error('useCommandExecutor must be used within CommandProvider');
+  }
+
+  return ctx.commandExecutor;
 }

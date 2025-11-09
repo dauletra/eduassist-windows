@@ -5,6 +5,7 @@ import { commandEventBus } from '../CommandEventBus';
 import type { DialogContext } from './types';
 import type { EnrichedLesson } from '../../types';
 import type { Command, CommandResult, CommandSource } from './types';
+import type { EventProcessor } from './EventProcessor';
 
 /**
  * Унифицированный executor для выполнения команд из любого источника
@@ -13,21 +14,31 @@ import type { Command, CommandResult, CommandSource } from './types';
  * Различие только в поле source
  */
 export class CommandExecutor {
+  private getContext: () => DialogContext;
+  private getCurrentLesson: () => EnrichedLesson | null;
+  private eventProcessor: EventProcessor;
+
+  constructor(
+    getContext: () => DialogContext,
+    getCurrentLesson: () => EnrichedLesson | null,
+    eventProcessor: EventProcessor
+  ) {
+    this.getContext = getContext;
+    this.getCurrentLesson = getCurrentLesson;
+    this.eventProcessor = eventProcessor;
+  }
+
   /**
    * Выполнить команду
    *
    * @param type - тип команды ('SetGrade', 'RandomStudent' и т.д.)
    * @param params - параметры команды
-   * @param source - источник команды ('ui', 'voice', 'hotkey')
-   * @param context - текущий контекст
-   * @param currentLesson - текущий урок
+   * @param source - источник команды ('ui', 'voice', 'system')
    */
   async execute(
     type: string,
     params: Record<string, any>,
-    source: CommandSource,
-    context: DialogContext,
-    currentLesson: EnrichedLesson | null
+    source: CommandSource
   ): Promise<CommandResult> {
     console.group(`🎯 CommandExecutor.execute() [${source}]`);
     console.log('Command:', type);
@@ -35,6 +46,12 @@ export class CommandExecutor {
     console.log('Source:', source);
 
     try {
+      // Получить актуальный контекст
+      const context = this.getContext();
+      const currentLesson = this.getCurrentLesson();
+
+      console.log('Context:', context);
+
       const command: Command = {
         type,
         params,
@@ -44,15 +61,22 @@ export class CommandExecutor {
       // Выполнить команду через CommandHandler
       const result = await commandHandler.execute(command, context, currentLesson);
 
-      // Если успешно и есть данные, опубликовать событие
-      if (result.success && result.data) {
-        console.log('📢 Publishing event:', result.data.type);
-        commandEventBus.emit(result.data.type, result.data);
+      // Обработать события команды через EventProcessor
+      if (result.events && result.events.length > 0) {
+        console.log('🔄 Processing events:', result.events);
+        this.eventProcessor.processEvents(result.events);
+
+        // Публикуем события через EventBus для других подписчиков
+        result.events.forEach(event => {
+          console.log('📢 Publishing event:', event.type);
+          commandEventBus.emit(event.type, event.payload);
+        });
       }
 
-      if (result.updateContext) {
-        console.log('🔄 Publishing context_changed:', result.updateContext);
-        commandEventBus.emit('context_changed', result.updateContext);
+      // Если успешно и есть данные, опубликовать событие (legacy)
+      if (result.success && result.data) {
+        console.log('📢 Publishing legacy event:', result.data.type);
+        commandEventBus.emit(result.data.type, result.data);
       }
 
       console.log(`✅ Command executed from ${source}:`, result);
@@ -72,5 +96,5 @@ export class CommandExecutor {
   }
 }
 
-// Singleton instance
-export const commandExecutor = new CommandExecutor();
+// Singleton удалён - экземпляр создаётся в React Context
+// export const commandExecutor = new CommandExecutor();

@@ -1,4 +1,5 @@
 import type { CommandDefinition } from '../types';
+import { COMMAND_EVENTS } from '../types';
 
 /**
  * Команда постановки оценки ученику
@@ -133,7 +134,17 @@ export const setGradeCommand: CommandDefinition = {
         studentId: student.id,
         studentName: student.name,
         grade
-      }
+      },
+      // Публикуем событие об установке оценки
+      events: [
+        {
+          type: COMMAND_EVENTS.GRADE_SET,
+          payload: {
+            studentId: student.id,
+            grade
+          }
+        }
+      ]
     };
   }
 };

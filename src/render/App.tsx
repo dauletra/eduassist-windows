@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { SelectedGroup, Lesson, Class, EnrichedLesson } from './types';
 import './App.css';
 import TabBar from './components/TabBar';
 import VoiceAssistant from './components/VoiceAssistant';
 import Sidebar from './components/Sidebar';
 import { CommandProvider } from './contexts/CommandContext';
-
+import { DialogManager} from "./services/dialog/DialogManager.ts";
+import { useCommandExecutor, useCommandContext } from "./contexts/CommandContext";
+import { voiceCommandBus } from "./services/VoiceCommandBus.ts";
 import { commandHandler, allCommands } from './services/commands';
-import { commandEventBus } from './services/CommandEventBus.ts';
 
 const EduAssist = () => {
   // Основные состояния
@@ -17,172 +18,56 @@ const EduAssist = () => {
   const [allLessons, setAllLessons] = useState<EnrichedLesson[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Единый источник для текущей группы
+  const currentGroup = useMemo(() => {
+    if (!selectedGroupIds || !appData) return null;
+    const cls = appData.find(c => c.id === selectedGroupIds.classId);
+    return cls?.groups.find(g => g.id === selectedGroupIds.groupId) || null;
+  }, [selectedGroupIds, appData]);
+
+  const selectedGroup = useMemo((): SelectedGroup | null => {
+    if (!selectedGroupIds || !appData || !currentGroup) return null;
+
+    const cls = appData.find(c => c.id === selectedGroupIds.classId);
+    if (!cls) return null;
+
+    return {
+      classId: cls.id,
+      className: cls.name,
+      groupId: currentGroup.id,
+      groupName: currentGroup.name,
+    };
+  }, [selectedGroupIds, appData, currentGroup]);
+
+  // Инициализация команд
   useEffect(() => {
     console.log('🚀 Initializing Command System...');
-
-    // Регистрируем все команды
     commandHandler.registerMany(allCommands);
-
     console.log('✅ Command System initialized');
     console.log('Registered commands:', commandHandler.getAllDefinitions().map(c => c.type));
   }, []);
 
-  /**
-   * Обработчик открытия журнала по параметрам из голосовой команды
-   * Вызывается из VoiceAssistant при команде "Открой журнал 9 В второй группы"
-   *
-   * @returns true если журнал найден и открыт, false если не найден
-   */
-  const handleOpenJournalByParams = useCallback((
-    classNumber: string,
-    classLetter: string,
-    groupNumber: string
-  ): boolean => {
-    console.group('📖 Opening Journal by Voice Parameters');
-    console.log('Parameters:', { classNumber, classLetter, groupNumber });
-
-    if (!appData) {
-      console.warn('⚠️ appData is null');
-      console.groupEnd();
-      return false;
-    }
-
-    // Поиск класса (гибкий - учитываем разные форматы: "9В", "9 В", "9 В класс")
-    const className = `${classNumber}${classLetter}`;
-    console.log('Looking for class:', className);
-
-    const cls = appData.find(c => {
-      // Нормализуем имя класса: убираем пробелы и слово "класс"
-      const normalized = c.name
-        .replace(/\s+/g, '')      // убрать все пробелы
-        .replace(/класс/gi, '')   // убрать слово "класс"
-        .toUpperCase();
-
-      const searchName = className
-        .replace(/\s+/g, '')
-        .toUpperCase();
-
-      return normalized === searchName;
-    });
-
-    if (!cls) {
-      console.warn(`⚠️ Class ${className} not found`);
-      console.log('Available classes:', appData.map(c => c.name));
-      console.groupEnd();
-      return false;
-    }
-
-    console.log('✅ Class found:', cls.name);
-
-    // Поиск группы (извлекаем номер из названия)
-    const group = cls.groups.find(g => {
-      // Извлечь номер группы из названия (например, "1 группа" -> "1", "Группа 2" -> "2")
-      const match = g.name.match(/(\d+)/);
-      const groupNum = match ? match[1] : null;
-
-      return groupNum === groupNumber;
-    });
-
-    if (!group) {
-      console.warn(`⚠️ Group ${groupNumber} not found in class ${className}`);
-      console.log('Available groups:', cls.groups.map(g => g.name));
-      console.groupEnd();
-      return false;
-    }
-
-    console.log(`✅ Opening journal: ${className} ${group.name} (groupId: ${group.id})`);
-    console.groupEnd();
-
-    // Открываем журнал через существующий обработчик
-    setSelectedGroupIds({
-      classId: cls.id,
-      groupId: group.id,
-    });
-
-    return true;
-  }, [appData]);
-
-  // Оптимистичное обновление оценки
-  const handleUpdateGrade = useCallback(async (lessonId: string, studentId: string, grade: number | null) => {
-    if (!currentLesson || currentLesson.id !== lessonId) return;
-
-    const previousLesson = currentLesson;
-
-    // Немедленно обновляем UI
-    setCurrentLesson(prev => {
-      if (!prev) return prev;
-
-      return {
-        ...prev,
-        students: prev.students.map(student =>
-          student.id === studentId
-            ? { ...student, grade }
-            : student
-        )
-      };
-    });
-
-    // Отправляем изменения на сервер
+  // Загрузка данных класса
+  const loadClassData = useCallback(async () => {
     try {
-      await window.electronAPI.updateGrade(lessonId, studentId, grade);
+      setError(null);
+      const students: Class[] = await window.electronAPI.loadStudentsList();
+      setAppData(students);
     } catch (error) {
-      console.error('Ошибка обновления оценки:', error);
-      setError('Не удалось сохранить оценку');
-      setCurrentLesson(previousLesson);
+      console.error('Ошибка загрузки данных:', error);
+      setError('Не удалось загрузить данные классов. Проверьте настройки.');
+      setAppData([]);
     }
-  }, [currentLesson]);
+  }, []);
 
-  useEffect(() => {
-    console.log('📡 Setting up CommandEventBus subscriptions...');
-
-    // Подписка на команду SetGrade
-    const unsubscribeGrade = commandEventBus.subscribe('grade_set', (data) => {
-      console.log('📢 CommandEventBus: grade_set received', data);
-      handleUpdateGrade(data.lessonId, data.studentId, data.grade);
-    });
-
-    // Подписка на команду OpenJournal
-    const unsubscribeJournal = commandEventBus.subscribe('journal_opened', (data) => {
-      console.log('📢 CommandEventBus: journal_opened received', data);
-      const success = handleOpenJournalByParams(
-        data.classNumber,
-        data.classLetter,
-        data.groupNumber
-      );
-      if (!success) {
-        console.error('❌ Failed to open journal:', data);
-      }
-    });
-
-    return () => {
-      console.log('📡 Cleaning up CommandEventBus subscriptions...');
-      unsubscribeGrade();
-      unsubscribeJournal();
-    };
-  }, [currentLesson, handleOpenJournalByParams, handleUpdateGrade]); // зависимость от currentLesson для handleUpdateGrade
-
-
-  /**
-   * Обогащает урок данными из appData
-   * Добавляет имена учеников из Group.students к LessonStudent
-   */
+  // Обогащает урок данными из appData
   const enrichLesson = useCallback((lesson: Lesson | null): EnrichedLesson | null => {
-    if (!lesson || !appData) return lesson as EnrichedLesson | null;
+    if (!lesson || !currentGroup) return lesson as EnrichedLesson | null;
 
     console.log('📚 Enriching lesson with student names...');
 
-    // Найти класс и группу
-    const cls = appData.find(c => c.id === lesson.classId);
-    const group = cls?.groups.find(g => g.id === lesson.groupId);
-
-    if (!group) {
-      console.warn('⚠️ Group not found for lesson:', lesson.classId, lesson.groupId);
-      return lesson as EnrichedLesson;
-    }
-
-    // Обогатить учеников именами
     const enrichedStudents = lesson.students.map(lessonStudent => {
-      const student = group.students.find(s => s.id === lessonStudent.id);
+      const student = currentGroup.students.find(s => s.id === lessonStudent.id);
 
       if (!student) {
         console.warn('⚠️ Student not found:', lessonStudent.id);
@@ -203,9 +88,9 @@ const EduAssist = () => {
       ...lesson,
       students: enrichedStudents
     };
-  }, [appData]);
+  }, [currentGroup]);
 
-  // ИЗМЕНИТЬ loadCurrentLesson:
+  // Загрузка текущего урока
   const loadCurrentLesson = useCallback(async () => {
     if (!selectedGroupIds) {
       setCurrentLesson(null);
@@ -221,8 +106,9 @@ const EduAssist = () => {
         selectedGroupIds.groupId
       );
 
-      // Обогатить все уроки
-      const enrichedLessons = lessons.map((l: Lesson | null) => enrichLesson(l)).filter(Boolean) as EnrichedLesson[];
+      const enrichedLessons = lessons
+        .map((l: Lesson | null) => enrichLesson(l))
+        .filter(Boolean) as EnrichedLesson[];
       setAllLessons(enrichedLessons);
 
       let lesson = await window.electronAPI.getTodayLesson(
@@ -242,7 +128,6 @@ const EduAssist = () => {
         }
       }
 
-      // Обогатить текущий урок
       const enrichedLesson = enrichLesson(lesson);
       setCurrentLesson(enrichedLesson);
 
@@ -254,43 +139,30 @@ const EduAssist = () => {
     }
   }, [selectedGroupIds, enrichLesson]);
 
-  const selectedGroup = useMemo((): SelectedGroup | null => {
-    if (!selectedGroupIds || !appData) return null;
+  // Оптимистичное обновление оценки
+  const handleUpdateGrade = useCallback(async (lessonId: string, studentId: string, grade: number | null) => {
+    if (!currentLesson || currentLesson.id !== lessonId) return;
 
-    const cls = appData.find(c => c.id === selectedGroupIds.classId);
-    if (!cls) return null;
+    const previousLesson = currentLesson;
 
-    const group = cls?.groups.find(g => g.id === selectedGroupIds.groupId);
-    if (!group) return null;
+    setCurrentLesson(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        students: prev.students.map(student =>
+          student.id === studentId ? { ...student, grade } : student
+        )
+      };
+    });
 
-    return cls && group ? {
-      classId: cls.id,
-      className: cls.name,
-      groupId: group.id,
-      groupName: group.name,
-    } : null;
-  }, [selectedGroupIds, appData])
-
-  const groupData = useMemo(() => {
-    if (!selectedGroupIds || !appData) return null;
-
-    const cls = appData.find(c => c.id === selectedGroupIds.classId);
-    const group = cls?.groups.find(g => g.id === selectedGroupIds.groupId);
-
-    return group || null;
-  }, [selectedGroupIds, appData]);
-
-  const loading = appData === null;
-
-  const getStudentName = useCallback((studentId: string): string => {
-    if (!appData || !selectedGroupIds) return studentId;
-
-    const cls = appData.find(c => c.id === selectedGroupIds.classId);
-    const group = cls?.groups.find(g => g.id === selectedGroupIds.groupId);
-    const student = group?.students.find(s => s.id === studentId);
-
-    return student?.name || studentId;  // s001 -> "Акмарал А."
-  }, [appData, selectedGroupIds])
+    try {
+      await window.electronAPI.updateGrade(lessonId, studentId, grade);
+    } catch (error) {
+      console.error('Ошибка обновления оценки:', error);
+      setError('Не удалось сохранить оценку');
+      setCurrentLesson(previousLesson);
+    }
+  }, [currentLesson]);
 
   // Оптимистичное обновление посещаемости
   const handleUpdateAttendance = useCallback(async (lessonId: string, studentId: string, attendance: boolean) => {
@@ -298,70 +170,36 @@ const EduAssist = () => {
 
     const previousLesson = currentLesson;
 
-    // Немедленно обновляем UI
     setCurrentLesson(prev => {
       if (!prev) return prev;
-
       return {
         ...prev,
         students: prev.students.map(student =>
-          student.id === studentId
-            ? { ...student, attendance }
-            : student
+          student.id === studentId ? { ...student, attendance } : student
         )
       };
     });
 
-    // Отправляем изменения на сервер
     try {
       await window.electronAPI.updateAttendance(lessonId, studentId, attendance);
     } catch (error) {
       console.error('Ошибка обновления посещаемости:', error);
-      setError('Не удалось сохранить посещаемость')
+      setError('Не удалось сохранить посещаемость');
       setCurrentLesson(previousLesson);
     }
   }, [currentLesson]);
 
-
-  // Загружаем урок при изменении выбранной группы
-  useEffect(() => {
-    loadCurrentLesson();
-  }, [loadCurrentLesson]);
-
-  // Загрузка данных при монтировании
-  useEffect(() => {
-    loadClassData();
-
-    // Слушаем обновления из окна настроек
-    const handleSettingsUpdate = () => {
-      loadClassData();
-    }
-
-    window.electronAPI.onSettingsUpdated(handleSettingsUpdate);
-
-    return () => {
-      window.electronAPI.removeSettingsUpdatedListener()
-    }
-  }, []);
-
-  // Загрузка данных класса
-  const loadClassData = async () => {
-    try {
-      setError(null)
-      const students: Class[] = await window.electronAPI.loadStudentsList();
-      setAppData(students);
-    } catch (error) {
-      console.error('Ошибка загрузки данных:', error);
-      setError('Не удалось загрузить данный классов. Проверьте настройки.');
-      setAppData([])
-    }
-  };
+  // Получить имя ученика
+  const getStudentName = useCallback((studentId: string): string => {
+    if (!currentGroup) return studentId;
+    const student = currentGroup.students.find(s => s.id === studentId);
+    return student?.name || studentId;
+  }, [currentGroup]);
 
   // Обработчик выбора группы
-  const handleGroupSelect =  useCallback(async (groupId: string) => {
+  const handleGroupSelect = useCallback(async (groupId: string) => {
     console.group('🎯 handleGroupSelect called');
     console.log('Requested groupId:', groupId);
-    console.log('Current appData:', appData);
 
     if (!appData) {
       console.warn('⚠️ appData is null');
@@ -370,7 +208,6 @@ const EduAssist = () => {
     }
 
     const cls = appData.find(c => c.groups.some(g => g.id === groupId));
-    console.log('Found class:', cls);
 
     if (!cls) {
       console.warn('⚠️ Class not found for groupId:', groupId);
@@ -379,7 +216,6 @@ const EduAssist = () => {
     }
 
     const group = cls.groups.find(g => g.id === groupId);
-    console.log('Found group:', group);
 
     if (!group) {
       console.warn('⚠️ Group not found');
@@ -400,34 +236,138 @@ const EduAssist = () => {
     console.groupEnd();
   }, [appData]);
 
-  const handleLessonChange = (lesson: EnrichedLesson) => {
-    setCurrentLesson(lesson);
-  }
-
   // Обработчик возврата к выбору групп
-  const handleBackToGroups = () => {
+  const handleBackToGroups = useCallback(() => {
     setSelectedGroupIds(null);
     setCurrentLesson(null);
-  };
+  }, []);
 
-  // Обработчик обновления настроек
-  const handleSettingsUpdate = () => {
+  // Загружаем урок при изменении выбранной группы
+  useEffect(() => {
+    loadCurrentLesson();
+  }, [loadCurrentLesson]);
+
+  // Загрузка данных при монтировании
+  useEffect(() => {
     loadClassData();
-  };
+
+    const handleSettingsUpdate = () => {
+      loadClassData();
+    };
+
+    window.electronAPI.onSettingsUpdated(handleSettingsUpdate);
+
+    return () => {
+      window.electronAPI.removeSettingsUpdatedListener();
+    };
+  }, [loadClassData]);
+
+  const loading = appData === null;
 
   return (
-    <CommandProvider currentLesson={currentLesson} selectedGroup={selectedGroup}>
-      <div className="h-screen bg-gray-50 flex overflow-hidden">
+    <CommandProvider
+      currentLesson={currentLesson}
+      selectedGroup={selectedGroup}
+      setCurrentLesson={setCurrentLesson}
+    >
+      <EduAssistInner
+        appData={appData}
+        loading={loading}
+        currentLesson={currentLesson}
+        allLessons={allLessons}
+        selectedGroup={selectedGroup}
+        groupData={currentGroup}
+        error={error}
+        setError={setError}
+        onGroupSelect={handleGroupSelect}
+        onBackToGroups={handleBackToGroups}
+        onLessonChange={setCurrentLesson}
+        onUpdateGrade={handleUpdateGrade}
+        onUpdateAttendance={handleUpdateAttendance}
+        onSettingsUpdate={loadClassData}
+        getStudentName={getStudentName}
+      />
+    </CommandProvider>
+  );
+};
 
-      {/*Добавить уведомление об ошибке*/}
+const EduAssistInner = ({
+                          appData,
+                          loading,
+                          currentLesson,
+                          allLessons,
+                          selectedGroup,
+                          groupData,
+                          error,
+                          setError,
+                          onGroupSelect,
+                          onBackToGroups,
+                          onLessonChange,
+                          onUpdateGrade,
+                          onUpdateAttendance,
+                          onSettingsUpdate,
+                          getStudentName
+                        }) => {
+  const commandExecutor = useCommandExecutor();
+  const commandContext = useCommandContext();
+  const dialogManagerRef = useRef<DialogManager | null>(null);
+
+  // Инициализация DialogManager
+  useEffect(() => {
+    if (commandExecutor && !dialogManagerRef.current) {
+      dialogManagerRef.current = new DialogManager(commandExecutor);
+      console.log('✅ DialogManager initialized');
+    }
+  }, [commandExecutor]);
+
+  // Подписка на голосовые команды через шину
+  useEffect(() => {
+    const handleVoiceCommand = (command: {
+      text: string;
+      intent: string;
+      entities: any[];
+      cluResponse: any;
+    }) => {
+      if (!dialogManagerRef.current) {
+        console.error('❌ DialogManager not initialized');
+        return;
+      }
+
+      console.log('🎤 Voice command received from bus:', command);
+
+      dialogManagerRef.current
+        .process(command.cluResponse, command.text, commandContext)
+        .then(result => {
+          console.log('🎯 DialogManager result:', result);
+        })
+        .catch(error => {
+          console.error('❌ Dialog processing error:', error);
+        });
+    };
+
+    // Подписываемся на событие
+    voiceCommandBus.subscribe('command-recognized', handleVoiceCommand);
+
+    // Отписываемся при размонтировании
+    return () => {
+      voiceCommandBus.unsubscribe('command-recognized', handleVoiceCommand);
+    };
+  }, [commandContext]);
+
+  return (
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
+      {/* Уведомление об ошибке */}
       {error && (
-        <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 z-50 max-w-md">
+        <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 z-50 max-w-md rounded-lg shadow-lg">
           <div className="flex items-start gap-2">
             <span className="text-xl">⚠️</span>
             <div className="flex-1">
+              <p className="font-medium mb-1">Ошибка</p>
+              <p className="text-sm">{error}</p>
               <button
                 onClick={() => setError(null)}
-                className="text-sm underline mt-1 hover:text-red-800">
+                className="text-sm underline mt-1 hover:text-red-800"
+              >
                 Закрыть
               </button>
             </div>
@@ -435,6 +375,7 @@ const EduAssist = () => {
         </div>
       )}
 
+      {/* Sidebar */}
       <div className="w-80 bg-white border-r flex flex-col min-h-0">
         <Sidebar
           appData={appData}
@@ -443,23 +384,20 @@ const EduAssist = () => {
           currentLesson={currentLesson}
           allLessons={allLessons}
           getStudentName={getStudentName}
-          onGroupSelect={handleGroupSelect}
-          onBackToGroups={handleBackToGroups}
-          onLessonChange={handleLessonChange}
-          onUpdateGrade={handleUpdateGrade}
-          onUpdateAttendance={handleUpdateAttendance}
-          onSettingsUpdate={handleSettingsUpdate}
+          onGroupSelect={onGroupSelect}
+          onBackToGroups={onBackToGroups}
+          onLessonChange={onLessonChange}
+          onUpdateGrade={onUpdateGrade}
+          onUpdateAttendance={onUpdateAttendance}
+          onSettingsUpdate={onSettingsUpdate}
         />
       </div>
 
+      {/* Content Area */}
       <div id="contentBar" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-
-        {/* Голосовой ассистент - фиксированный */}
+        {/* Голосовой ассистент */}
         <div className="bg-white flex-shrink-0">
-          <VoiceAssistant
-            currentLesson={currentLesson}
-            onOpenJournal={handleOpenJournalByParams}
-          />
+          <VoiceAssistant />
         </div>
 
         {/* Табы */}
@@ -468,11 +406,11 @@ const EduAssist = () => {
             selectedGroup={selectedGroup}
             currentLesson={currentLesson}
             groupData={groupData}
-            className="h-full" />
+            className="h-full"
+          />
         </div>
       </div>
     </div>
-    </CommandProvider>
   );
 };
 

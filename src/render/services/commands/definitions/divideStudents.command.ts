@@ -1,5 +1,5 @@
 import type { CommandDefinition } from '../types';
-// import type { EnrichedLessonStudent } from '../../../types';
+import { COMMAND_EVENTS } from '../types';
 import { createBalancedGroups, calculateTargetSizes } from "./groupFormationAlgorithm.ts";
 
 /**
@@ -92,10 +92,10 @@ export const divideByGroupCountCommand: CommandDefinition = {
     // Получить функцию проверки конфликтов из контекста
     const hasConflict = _context.hasConflict || (() => false);
 
-// Вычислить целевые размеры групп
+    // Вычислить целевые размеры групп
     const targetSizes = calculateTargetSizes(students.length, 'groups', groupCount, 0);
 
-// Создать сбалансированные группы с учетом конфликтов
+    // Создать сбалансированные группы с учетом конфликтов
     const result = createBalancedGroups(students, targetSizes, hasConflict);
     const groups = result.groups;
 
@@ -117,7 +117,20 @@ export const divideByGroupCountCommand: CommandDefinition = {
           id: s.id,
           name: s.name
         })))
-      }
+      },
+      // Публикуем событие о делении учеников
+      events: [
+        {
+          type: COMMAND_EVENTS.STUDENTS_DIVIDED,
+          payload: {
+            groups: groups.map(group => group.map(s => ({
+              id: s.id,
+              name: s.name
+            }))),
+            method: 'by_count'
+          }
+        }
+      ]
     };
   }
 };
@@ -210,10 +223,10 @@ export const divideByGroupSizeCommand: CommandDefinition = {
     // Получить функцию проверки конфликтов из контекста
     const hasConflict = _context.hasConflict || (() => false);
 
-// Вычислить целевые размеры групп
+    // Вычислить целевые размеры групп
     const targetSizes = calculateTargetSizes(students.length, 'people', 0, groupSize);
 
-// Создать сбалансированные группы с учетом конфликтов
+    // Создать сбалансированные группы с учетом конфликтов
     const result = createBalancedGroups(students, targetSizes, hasConflict);
     const groups = result.groups;
 
@@ -239,7 +252,20 @@ export const divideByGroupSizeCommand: CommandDefinition = {
           id: s.id,
           name: s.name
         })))
-      }
+      },
+      // Публикуем событие о делении учеников
+      events: [
+        {
+          type: COMMAND_EVENTS.STUDENTS_DIVIDED,
+          payload: {
+            groups: groups.map(group => group.map(s => ({
+              id: s.id,
+              name: s.name
+            }))),
+            method: 'by_size'
+          }
+        }
+      ]
     };
   }
 };
