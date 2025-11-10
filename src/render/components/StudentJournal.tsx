@@ -1,4 +1,4 @@
-// import {type Dispatch, type SetStateAction} from 'react';
+// components/StudentJournal.tsx
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useCommands } from '../hooks/useCommands';
 import { ChevronLeft, ChevronRight, MoreHorizontal, MessageSquare, UserX } from 'lucide-react';
@@ -10,9 +10,9 @@ interface StudentJournalProps {
   allLessons: EnrichedLesson[];
   getStudentName: (studentId: string) => string;
   onBack: () => void;
-  onLessonChange: (lesson: EnrichedLesson) => void;
-  onUpdateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
-  onUpdateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
+  onLessonChange: (lesson: string) => void;
+  onUpdateGrade: (studentId: string, grade: number | null) => Promise<void>;
+  onUpdateAttendance: (studentId: string, attendance: boolean) => Promise<void>;
 }
 
 const StudentJournal = ({ 
@@ -114,24 +114,6 @@ const StudentJournal = ({
     // UI обновится автоматически через VoiceCommandBus в App.tsx
   };
 
-  // Объединенная функция обновления оценки
-  // const handleGradeUpdate = useCallback(async (studentId: string, gradeValue: string) => {
-  //   // Парсим значение для отправки на сервер (только цифры от 1 до 10)
-  //   let grade: number | null = null;
-  //   if (gradeValue) {
-  //     const parsed = parseInt(gradeValue);
-  //     if (!isNaN(parsed) && parsed >= 1 && parsed <= 10) {
-  //       grade = parsed;
-  //     }
-  //   }
-  //
-  //   try {
-  //     await onUpdateGrade(currentLesson.id, studentId, grade);
-  //   } catch (error) {
-  //     console.error('Ошибка обновления оценки:', error);
-  //   }
-  // }, [currentLesson.id, onUpdateGrade]);
-
   // Обработчики для меню
   const handleQuickScore = useCallback((studentId: string, score: string) => {
     handleGradeClick(studentId, Number(score));
@@ -141,13 +123,13 @@ const StudentJournal = ({
 
   const handleAttendanceUpdate = useCallback(async (studentId: string, attendance: boolean) => {
     try {
-      await onUpdateAttendance(currentLesson.id, studentId, attendance);
+      await onUpdateAttendance(studentId, attendance);
       setOpenMenu(null);
       setMenuPosition(null);
     } catch (error) {
       console.error('Ошибка обновления посещаемости:', error);
     }
-  }, [currentLesson.id, onUpdateAttendance]);
+  }, [onUpdateAttendance]);
 
   const handleComment = useCallback((studentId: string) => {
     // TODO: Открыть модальное окно для добавления комментария
@@ -181,7 +163,7 @@ const StudentJournal = ({
             <button
               onClick={() =>{
                 if (canGoPrevious) {
-                  onLessonChange(allLessons[currentLessonIndex - 1]);
+                  onLessonChange(allLessons[currentLessonIndex - 1].id);
                 }
               }}
               disabled={!canGoPrevious}
@@ -200,7 +182,7 @@ const StudentJournal = ({
             <button
               onClick={() => {
                 if (canGoNext) {
-                  onLessonChange(allLessons[currentLessonIndex + 1]);
+                  onLessonChange(allLessons[currentLessonIndex + 1].id);
                 }
               }}
               disabled={!canGoNext}

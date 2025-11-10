@@ -1,37 +1,46 @@
 import { Settings as SettingsIcon } from 'lucide-react';
 import GroupSelector from './GroupSelector';
 import StudentJournal from './StudentJournal';
-import type { SelectedGroup, Class, Lesson, EnrichedLesson } from '../types';
+import { useAppState } from '../contexts/StoreContext';
+import type { SelectedGroup } from '../types';
 
 
 interface SidebarProps {
-  appData: Class[] | null;
-  loading: boolean;
-  selectedGroup: SelectedGroup | null;
-  currentLesson: Lesson | null;
-  allLessons: Lesson[];
-  getStudentName: (name: string) => string;
+  getStudentName: (studentId: string) => string;
   onGroupSelect: (groupId: string) => void;
   onBackToGroups: () => void;
-  onLessonChange: (lesson: EnrichedLesson) => void;
-  onUpdateGrade: (lessonId: string, studentId: string, grade: number | null) => Promise<void>;
-  onUpdateAttendance: (lessonId: string, studentId: string, attendance: boolean) => Promise<void>;
-  onSettingsUpdate: () => void;
+  onLessonChange: (lesson: string) => void;
+  onUpdateGrade: (studentId: string, grade: number | null) => Promise<void>;
+  onUpdateAttendance: (studentId: string, attendance: boolean) => Promise<void>;
+  onSettingsUpdate: () => Promise<void>;
 }
 
-const Sidebar = ({ 
-  appData,
-  loading, 
-  selectedGroup,
-  currentLesson,
-  allLessons,
-  getStudentName,
-  onGroupSelect,
-  onBackToGroups,
-  onLessonChange,
-  onUpdateGrade,
-  onUpdateAttendance,
-}: SidebarProps) => {
+const Sidebar = ({
+                   getStudentName,
+                   onGroupSelect,
+                   onBackToGroups,
+                   onLessonChange,
+                   onUpdateGrade,
+                   onUpdateAttendance,
+                 }: SidebarProps) => {
+  // Используем состояние из контекста
+  const state = useAppState();
+  const {
+    classes,
+    currentLesson,
+    currentGroup,
+    currentClass,
+    loading,
+    groupLessons
+  } = state;
+
+  // Формируем selectedGroup для совместимости с существующими компонентами
+  const selectedGroup: SelectedGroup | null = currentClass && currentGroup ? {
+    classId: currentClass.id,
+    className: currentClass.name,
+    groupId: currentGroup.id,
+    groupName: currentGroup.name,
+  } : null;
 
   const handleOpenSettings = async () => {
     try {
@@ -48,7 +57,7 @@ const Sidebar = ({
         <div className="flex-1 overflow-y-auto">
           {!selectedGroup ? (
               <GroupSelector
-                appData={appData}
+                appData={classes}
                 loading={loading}
                 onGroupSelect={onGroupSelect}
               />
@@ -57,7 +66,7 @@ const Sidebar = ({
               <StudentJournal
                 selectedGroup={selectedGroup}
                 currentLesson={currentLesson}
-                allLessons={allLessons}
+                allLessons={groupLessons}
                 getStudentName={getStudentName}
                 onBack={onBackToGroups}
                 onLessonChange={onLessonChange}

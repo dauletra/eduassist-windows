@@ -1,32 +1,28 @@
+// src/render/hooks/useCommands.ts
+
 import { useCallback, useMemo } from 'react';
-import { useCommandExecutor } from '../contexts/CommandContext';
+import { useCommandDispatcher } from '../contexts/StoreContext'; // ИЗМЕНЕНО
 
 /**
  * Хук для удобного использования команд из UI компонентов
  *
- * Использует CommandExecutor из React Context
- * Все команды выполняются с source: 'ui'
- *
- * @example
- * const commands = useCommands();
- * commands.setGrade('s001', 8);
- * commands.randomStudent(true);
+ * Использует CommandDispatcher из React Context
+ * Все команды выполняются через executeFromUI
  */
 export function useCommands() {
-  const commandExecutor = useCommandExecutor();
+  const commandDispatcher = useCommandDispatcher(); // ИЗМЕНЕНО
 
   /**
    * Поставить оценку ученику
    */
   const setGrade = useCallback(
     async (studentId: string, grade: number) => {
-      return commandExecutor.execute(
+      return commandDispatcher.executeFromUI( // ИЗМЕНЕНО
         'SetGrade',
-        { studentName: studentId, numberValue: grade },
-        'ui'
+        { studentName: studentId, numberValue: grade }
       );
     },
-    [commandExecutor]
+    [commandDispatcher]
   );
 
   /**
@@ -34,13 +30,12 @@ export function useCommands() {
    */
   const openJournal = useCallback(
     async (classNumber: string, classLetter: string, groupNumber: string) => {
-      return commandExecutor.execute(
+      return commandDispatcher.executeFromUI( // ИЗМЕНЕНО
         'OpenJournal',
-        { classNumber, classLetter, groupNumber },
-        'ui'
+        { classNumber, classLetter, groupNumber }
       );
     },
-    [commandExecutor]
+    [commandDispatcher]
   );
 
   /**
@@ -48,13 +43,12 @@ export function useCommands() {
    */
   const randomStudent = useCallback(
     async (onlyPresent: boolean = true) => {
-      return commandExecutor.execute(
+      return commandDispatcher.executeFromUI( // ИЗМЕНЕНО
         'RandomStudent',
-        { onlyPresent },
-        'ui'
+        { onlyPresent }
       );
     },
-    [commandExecutor]
+    [commandDispatcher]
   );
 
   /**
@@ -62,13 +56,12 @@ export function useCommands() {
    */
   const divideByGroupCount = useCallback(
     async (groupCount: number, onlyPresent: boolean = true) => {
-      return commandExecutor.execute(
+      return commandDispatcher.executeFromUI( // ИЗМЕНЕНО
         'DivideByGroupCount',
-        { numberValue: groupCount, onlyPresent },
-        'ui'
+        { numberValue: groupCount, onlyPresent }
       );
     },
-    [commandExecutor]
+    [commandDispatcher]
   );
 
   /**
@@ -76,13 +69,12 @@ export function useCommands() {
    */
   const divideByGroupSize = useCallback(
     async (groupSize: number, onlyPresent: boolean = true) => {
-      return commandExecutor.execute(
+      return commandDispatcher.executeFromUI( // ИЗМЕНЕНО
         'DivideByGroupSize',
-        { numberValue: groupSize, onlyPresent },
-        'ui'
+        { numberValue: groupSize, onlyPresent }
       );
     },
-    [commandExecutor]
+    [commandDispatcher]
   );
 
   return useMemo(

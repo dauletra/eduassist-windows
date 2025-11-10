@@ -5,17 +5,19 @@ import DevicesTab from "./DevicesTab.tsx";
 import RandomizerTab from "./RandomizerTab";
 import { SeatingChart } from "./SeatingChart.tsx";
 import TasksTab from "./TasksTab";
-import type {SelectedGroup, Lesson, Group, LessonFolder} from "../types";
+import type { LessonFolder } from "../types";
 import { voiceCommandBus } from "../services/CommandEventBus.ts";
+import {useAppState} from "../contexts/StoreContext.tsx";
 
 interface TabBarProps {
-  selectedGroup: SelectedGroup | null;
-  currentLesson: Lesson | null;
-  groupData: Group | null;
   className?: string;
 }
 
-const TabBar = ({ selectedGroup, currentLesson, groupData, className }: TabBarProps) => {
+const TabBar = ({ className }: TabBarProps) => {
+
+  const state = useAppState()
+  const { selectedGroup, currentLesson, currentGroup } = state;
+
   const [activeTab, setActiveTab] = useState('randomizer');
   const [selectedLesson, setSelectedLesson] = useState<LessonFolder | null>(null);
 
@@ -91,22 +93,18 @@ const TabBar = ({ selectedGroup, currentLesson, groupData, className }: TabBarPr
               <SeatingChart
                 selectedGroup={selectedGroup}
                 currentLesson={currentLesson}
-                groupData={groupData}
+                groupData={currentGroup}
               />
             </div>
             <div className={activeTab === 'tasks' ? '' : 'hidden'}>
               <TasksTab
                 selectedGroup={selectedGroup}
                 currentLesson={currentLesson}
-                groupData={groupData}
+                groupData={currentGroup}
               />
             </div>
             <div className={activeTab === 'randomizer' ? '' : 'hidden'}>
-              <RandomizerTab
-                selectedGroup={selectedGroup}
-                currentLesson={currentLesson}
-                groupData={groupData}
-              />
+              <RandomizerTab />
             </div>
             <div className={activeTab === 'files' ? '' : 'hidden'}>
               <FilesTab

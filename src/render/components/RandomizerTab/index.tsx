@@ -2,69 +2,66 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Users, Shuffle } from 'lucide-react';
-import type { EnrichedLesson, SelectedGroup, Group } from '../../types';
 import { GroupCard } from './GroupCard';
 import { RandomizerSettings } from './RandomizerSettings';
-import { getGridColumnsClass } from './utils';
-import { useRandomizer } from './useRandomizer';
-import { useGroupFormation } from './useGroupFormation';
+import { useAppState } from '../../contexts/StoreContext';
+import { useCommands } from "../../hooks/useCommands.ts";
 import { voiceCommandBus } from "../../services/CommandEventBus.ts";
-import { useCommands} from "../../hooks/useCommands.ts";
 
-interface RandomizerTabProps {
-  selectedGroup: SelectedGroup;
-  currentLesson: EnrichedLesson | null;
-  groupData: Group | null;
-  className?: string;
-}
+const GRID_COLS_MAP = {
+  3: 'grid-cols-3',
+  4: 'grid-cols-4',
+  6: 'grid-cols-3',
+  default: 'grid-cols-4',
+} as const;
 
-const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTabProps) => {
+const getGridColumnsClass = (groupCount: number): string => {
+  if (groupCount <= 3) return GRID_COLS_MAP[3];
+  if (groupCount <= 4) return GRID_COLS_MAP[4];
+  if (groupCount <= 6) return GRID_COLS_MAP[6];
+  return GRID_COLS_MAP.default;
+};
+
+const RandomizerTab = () => {
+  const state = useAppState();
+  const { selectedGroup, currentLesson, currentGroup } = state;
+  const commands = useCommands();
+
+  // ТОЛЬКО UI состояние
   const [groupCount, setGroupCount] = useState(3);
   const [includeAbsent, setIncludeAbsent] = useState(false);
   const [divisionMode, setDivisionMode] = useState<'groups' | 'people'>('groups');
   const [peoplePerGroup, setPeoplePerGroup] = useState(2);
   const [groupScores, setGroupScores] = useState<number[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [selectedGroupStudents, setSelectedGroupStudents] = useState<(string | null)[]>([]);
+  const [randomGroups, setRandomGroups] = useState<string[][]>([]);
+  const [isRandomizing, setIsRandomizing] = useState(false);
+  const [isFormingGroups, setIsFormingGroups] = useState(false);
+  const [animatingStudent, setAnimatingStudent] = useState<string | null>(null);
 
-  const commands = useCommands();
+  const hasGroups = randomGroups.length > 0;
 
-  const {
-    selectedStudent,
-    selectedGroupStudents,
-    isRandomizing,
-    randomGroups,
-    availableStudents,
-    hasGroups,
-    selectFromGroup,
-    hasConflict,
-    setRandomGroups,
-    setSelectedGroupStudents,
-    setSelectedStudent,
-    randomizeStudent,
-    resetSelection,
-    clearHistory
-  } = useRandomizer({ currentLesson, groupData, includeAbsent });
+  // Простая логика для UI
+  const availableStudents = useMemo(() => {
+    if (!currentLesson?.students || !currentGroup) return [];
 
-  const handleGroupsCreated = useCallback((groups: string[][], scores: number[]) => {
-    setRandomGroups(groups);
-    setGroupScores(scores);
-    setSelectedGroupStudents(new Array(groups.length).fill(null));
-    setSelectedStudent(null);
-    clearHistory();
-  }, [setRandomGroups, setSelectedGroupStudents, setSelectedStudent, clearHistory]);
+    const attendanceMap = new Map();
+    currentLesson.students.forEach(student => {
+      attendanceMap.set(student.id, student.attendance);
+    });
 
-  const { isFormingGroups, animatingStudent, divideIntoGroups } = useGroupFormation({
-    availableStudents,
-    divisionMode,
-    groupCount,
-    peoplePerGroup,
-    hasConflict,
-    onGroupsCreated: handleGroupsCreated,
-  });
+    return currentGroup.students.filter(student => {
+      if (includeAbsent) return true;
+      const attendance = attendanceMap.get(student.id) ?? true;
+      return attendance;
+    });
+  }, [currentLesson, currentGroup, includeAbsent]);
 
   const groupStats = useMemo(() => {
     const totalStudents = availableStudents.length;
     if (totalStudents === 0) {
-      return { min: 2, max: 2, optimal: [], studentsPerGroup: 0, remainder: 0, actualGroupCount: 0 };
+      return { min: 2, max: 2, studentsPerGroup: 0, remainder: 0, actualGroupCount: 0 };
     }
 
     if (divisionMode === 'groups') {
@@ -73,7 +70,6 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
       return {
         min: 2,
         max: Math.min(totalStudents, 8),
-        optimal: [],
         studentsPerGroup,
         remainder,
         actualGroupCount: groupCount
@@ -84,7 +80,6 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
       return {
         min: 1,
         max: totalStudents,
-        optimal: [],
         studentsPerGroup: peoplePerGroup,
         remainder: remainder > 0 ? 1 : 0,
         actualGroupCount
@@ -118,94 +113,109 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
     });
   }, []);
 
-  // НОВОЕ: Обработчик кнопки "Выбрать ученика" через Command API
+  // Обработчики - ТОЛЬКО вызов команд
   const handleRandomStudentClick = useCallback(async () => {
     console.log('🖱️ UI: Random student button clicked');
+    setIsRandomizing(true);
 
     const result = await commands.randomStudent(!includeAbsent);
 
-    if (result.success && result.data) {
-      // Команда сама отправит событие через VoiceAdapter
-      // Локальная анимация запустится автоматически через подписку
-    } else if (!result.success) {
+    if (!result.success) {
       console.error('❌ Random student failed:', result.message);
     }
+
+    setIsRandomizing(false);
   }, [commands, includeAbsent]);
 
-  // НОВОЕ: Обработчик кнопки "Разделить на группы" через Command API
   const handleDivideGroupsClick = useCallback(async () => {
     console.log('🖱️ UI: Divide groups button clicked');
+    setIsFormingGroups(true);
+    setAnimatingStudent('🎲 Формирую группы...');
 
-    if (divisionMode === 'groups') {
-      const result = await commands.divideByGroupCount(groupCount, !includeAbsent);
-
-      if (!result.success) {
-        console.error('❌ Divide groups failed:', result.message);
+    try {
+      if (divisionMode === 'groups') {
+        await commands.divideByGroupCount(groupCount, !includeAbsent);
+      } else {
+        await commands.divideByGroupSize(peoplePerGroup, !includeAbsent);
       }
-      // UI обновится автоматически через событие groups_formed
-    } else {
-      const result = await commands.divideByGroupSize(peoplePerGroup, !includeAbsent);
-
-      if (!result.success) {
-        console.error('❌ Divide groups failed:', result.message);
-      }
+    } catch (error) {
+      console.error('❌ Divide groups failed:', error);
+    } finally {
+      setIsFormingGroups(false);
+      setAnimatingStudent(null);
     }
   }, [commands, divisionMode, groupCount, peoplePerGroup, includeAbsent]);
 
-  // Очистка истории при изменении параметров фильтрации
-  useEffect(() => {
-    clearHistory();
-  }, [includeAbsent, clearHistory]);
+  // Простая анимация выбора внутри группы
+  const randomizeStudent = useCallback(async (groupIndex: number) => {
+    if (!hasGroups || !randomGroups[groupIndex]?.length) return;
 
-  useEffect(() => {
-    const unsubscribe = voiceCommandBus.subscribe('random_student_selected', (data) => {
-      console.log('🎲 Voice command: random_student_selected received', data);
+    setIsRandomizing(true);
 
-      if (data && data.studentName) {
-        // Установить выбранного ученика напрямую (без анимации при голосовой команде)
-        if (!hasGroups) {
-          setSelectedStudent(data.studentName);
-        }
+    // Простая анимация
+    const students = randomGroups[groupIndex];
+    for (let i = 0; i < 5; i++) {
+      const randomIndex = Math.floor(Math.random() * students.length);
+      setSelectedGroupStudents(prev => {
+        const newSelected = [...prev];
+        newSelected[groupIndex] = students[randomIndex];
+        return newSelected;
+      });
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Финальный выбор
+    const finalIndex = Math.floor(Math.random() * students.length);
+    setSelectedGroupStudents(prev => {
+      const newSelected = [...prev];
+      newSelected[groupIndex] = students[finalIndex];
+      return newSelected;
+    });
+
+    setIsRandomizing(false);
+  }, [hasGroups, randomGroups]);
+
+  const resetSelection = useCallback(() => {
+    if (hasGroups) {
+      setSelectedGroupStudents(new Array(randomGroups.length).fill(null));
+    } else {
+      setSelectedStudent(null);
+    }
+  }, [hasGroups, randomGroups.length]);
+
+  // Подписки на события от команд
+  useEffect(() => {
+    const unsubscribeRandom = voiceCommandBus.subscribe('random_student_selected', (data) => {
+      console.log('🎲 random_student_selected event:', data);
+      if (data?.studentName) {
+        setSelectedStudent(data.studentName);
       }
     });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [hasGroups, setSelectedStudent]);
-
-  useEffect(() => {
-    if (!hasGroups && selectedStudent && !availableStudents.some(s => s.name === selectedStudent)) {
-      setSelectedStudent(null);
-    }
-    if (hasGroups && selectedGroupStudents.length > 0 && !availableStudents.some(s => selectedGroupStudents.includes(s.name))) {
-      setSelectedGroupStudents([]);
-    }
-  }, [includeAbsent, selectedStudent, selectedGroupStudents, availableStudents, hasGroups, setSelectedStudent, setSelectedGroupStudents]);
-
-  // Подписка на события формирования групп
-  useEffect(() => {
-    const unsubscribeDivide = voiceCommandBus.subscribe('groups_formed', (data) => {
-      console.log('👥 Voice command: groups_formed received', data);
-
-      if (data && data.groups) {
-        // Преобразовать группы из формата команды в формат UI
+    const unsubscribeGroups = voiceCommandBus.subscribe('groups_formed', (data) => {
+      console.log('👥 groups_formed event:', data);
+      if (data?.groups) {
         const groupsAsNames = data.groups.map((group: any[]) =>
           group.map((student: any) => student.name)
         );
 
-        // Запустить анимацию с полученными группами
-        handleGroupsCreated(groupsAsNames, new Array(groupsAsNames.length).fill(0));
+        setRandomGroups(groupsAsNames);
+        setGroupScores(new Array(groupsAsNames.length).fill(0));
+        setSelectedGroupStudents(new Array(groupsAsNames.length).fill(null));
+        setSelectedStudent(null);
+        setAnimatingStudent('✅ Группы созданы!');
 
-        // Показать анимацию
-        divideIntoGroups();
+        setTimeout(() => {
+          setAnimatingStudent(null);
+        }, 2000);
       }
     });
 
     return () => {
-      unsubscribeDivide();
+      unsubscribeRandom();
+      unsubscribeGroups();
     };
-  }, [handleGroupsCreated, divideIntoGroups]);
+  }, []);
 
   if (!currentLesson) {
     return (
@@ -241,12 +251,12 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
 
           <div className="flex gap-4">
             <button
-              onClick={() => handleRandomStudentClick}
+              onClick={handleRandomStudentClick}
               disabled={isRandomizing || availableStudents.length === 0}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
             >
-              <Shuffle size={20} className={isRandomizing && selectFromGroup === null ? 'animate-spin' : ''} />
-              {isRandomizing && selectFromGroup === null
+              <Shuffle size={20} className={isRandomizing ? 'animate-spin' : ''} />
+              {isRandomizing
                 ? 'Выбираю...'
                 : hasGroups ? 'Выбрать из всех' : 'Выбрать ученика'}
             </button>
@@ -296,7 +306,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
           <div className="bg-blue-50 p-4 rounded-lg">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
               <Users size={20} />
-              {selectedGroup.groupName} ({availableStudents.length} из {groupData?.students.length} учеников)
+              {selectedGroup?.groupName} ({availableStudents.length} из {currentGroup?.students.length} учеников)
             </h3>
             {availableStudents.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
@@ -327,7 +337,7 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
                 selectedStudent={selectedGroupStudents[index]}
                 score={groupScores[index] || 0}
                 isRandomizing={isRandomizing}
-                isCurrentGroup={selectFromGroup === index}
+                isCurrentGroup={false}
                 onRandomize={randomizeStudent}
                 onScoreChange={(change) => updateGroupScore(index, change)}
                 onScoreSet={(value) => setGroupScoreDirectly(index, value)}
@@ -340,4 +350,5 @@ const RandomizerTab = ({ selectedGroup, currentLesson, groupData }: RandomizerTa
     </div>
   );
 };
+
 export default RandomizerTab;

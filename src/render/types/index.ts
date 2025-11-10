@@ -1,6 +1,7 @@
 // Импорт общих типов
 export type { Class, Group, Student, Lesson, LessonStudent, StudentConflict,
-  LessonFolder, ClassFolder, FileItem, Device, DeviceSettings, TaskStatus } from '../../electron/shared-types';
+  LessonFolder, ClassFolder, FileItem, Device, DeviceSettings, TaskStatus,
+  AppContext, DialogContext } from '../../electron/shared-types.js';
 
 // UI-специфичные типы
 export interface SelectedGroup {
@@ -10,7 +11,7 @@ export interface SelectedGroup {
   groupName: string;
 }
 
-import type { Lesson, LessonStudent } from '../../electron/shared-types';
+import type { Lesson, LessonStudent } from '../../electron/shared-types.js';
 
 export interface EnrichedLessonStudent extends LessonStudent {
   name: string

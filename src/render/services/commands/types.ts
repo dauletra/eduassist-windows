@@ -68,6 +68,7 @@ export interface CommandResult {
   events?: CommandEvent[]; // События, которые произошли
   needsClarification?: boolean; // нужно ли уточнение
   clarificationQuestion?: string; // вопрос для уточнения
+  newState?: {};
 }
 
 /**

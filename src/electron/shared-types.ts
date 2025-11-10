@@ -1,6 +1,8 @@
 // Общие интерфейсы для всего приложения
 
 // Расширенный интерфейс для window.electronAPI
+import type {EnrichedLesson} from "../render/types/index.js";
+
 export interface IElectronAPI {
   // Работа с уроками
   loadStudentsList: () => Promise<Class[]>;
@@ -87,6 +89,49 @@ export interface Lesson {
   classId: string;
   groupId: string;
   students: LessonStudent[];
+}
+
+// Context types - ОБНОВЛЕНО
+export interface AppContext {
+  // Основные данные
+  classes: Class[];
+  lessons: EnrichedLesson[];
+  loading: boolean;
+  error: string | null;
+
+  // Текущее состояние
+  currentClassId: string | null;
+  currentGroupId: string | null;
+  currentLessonId: string | null;
+
+  // Вычисляемые данные
+  currentClass: Class | null;
+  currentGroup: Group | null;
+  currentLesson: EnrichedLesson | null;
+  groupLessons: EnrichedLesson[];
+
+  // Методы навигации
+  openJournal: (classId: string, groupId: string) => Promise<void>;
+  selectLesson: (lessonId: string) => void;
+  closeJournal: () => void;
+
+  // Методы обновления данных
+  updateGrade: (studentId: string, grade: number | null) => Promise<void>;
+  updateAttendance: (studentId: string, attendance: boolean) => Promise<void>;
+  getStudentName: (studentId: string) => string;
+
+  // Утилиты
+  clearError: () => void;
+  reloadData: () => Promise<void>;
+}
+
+// Для командной системы
+export interface DialogContext {
+  classId?: string;
+  groupId?: string;
+  lessonId?: string;
+  currentLesson: EnrichedLesson | null;
+  hasConflict?: boolean;
 }
 
 // Ученик в уроке

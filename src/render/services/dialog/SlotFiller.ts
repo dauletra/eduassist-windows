@@ -1,134 +1,43 @@
+// src/render/services/dialog/SlotFiller.ts
+
 import type { CLUResponse } from '../CLUService';
-import type { IntentDefinition, SlotDefinition } from './intents/types.ts';
-import type { DialogContext } from './DialogManager';
+// import type { FinalCommandDispatcher } from '../commands/FinalCommandDispatcher'; // ИЗМЕНЕНО
+import type { DialogContext } from '../commands';
 
-interface SlotFillerResult {
-  slots: Record<string, any>;
-  missingSlots: SlotDefinition[];
-  validationErrors: Record<string, string>;
-}
-
+// Временно упрощаем SlotFiller - можно полностью переписать позже
 export class SlotFiller {
-  // Маппинг CLU entity categories на slot names
-  private readonly ENTITY_TO_SLOT: Record<string, string> = {
-    'ClassNumber': 'classNumber',
-    'ClassLetter': 'classLetter',
-    'GroupNumber': 'groupNumber',
-    'StudentName': 'studentName',
-    'NumberValue': 'numberValue',
-    'FileName': 'fileName',
-    'Duration': 'duration'
-  };
-
   /**
-   * Заполнить слоты из CLU response и контекста
+   * Упрощенный метод заполнения слотов
+   * TODO: Полностью переписать для новой системы
    */
-  fillSlots(
-    intentDef: IntentDefinition,
-    cluResponse: CLUResponse,
-    existingSlots: Record<string, any>,
-    context: DialogContext
-  ): SlotFillerResult {
-    const slots: Record<string, any> = { ...existingSlots };
-    const validationErrors: Record<string, string> = {};
+  fillSlotsFromCLU(cluResponse: CLUResponse): Record<string, any> {
+    const params: Record<string, any> = {};
 
-    // 1. Извлечь entities из CLU
-    const extractedEntities = this.extractEntities(cluResponse);
+    cluResponse.entities.forEach(entity => {
+      const extraInfo = entity.extraInformation as any;
+      const value = extraInfo?.listKey ?? entity.text;
+      params[entity.category] = value;
+    });
 
-    // 2. Заполнить слоты из entities
-    for (const slotDef of intentDef.slots) {
-      // Пропустить уже заполненные слоты
-      if (slots[slotDef.name] !== undefined) continue;
-
-      // Попытка автозаполнения из контекста
-      if (slotDef.autoFill) {
-        const autoValue = slotDef.autoFill(context);
-        if (autoValue !== undefined) {
-          slots[slotDef.name] = autoValue;
-          console.log(`🔄 Auto-filled slot '${slotDef.name}' from context:`, autoValue);
-          continue;
-        }
-      }
-
-      // Извлечь из entities
-      const entityValue = this.findEntityValue(slotDef, extractedEntities);
-      if (entityValue !== undefined) {
-        // Transform если нужно
-        const transformedValue = slotDef.transform
-          ? slotDef.transform(entityValue)
-          : entityValue;
-
-        slots[slotDef.name] = transformedValue;
-        console.log(`✅ Slot '${slotDef.name}' filled:`, transformedValue);
-      }
-    }
-
-    // 3. Валидация заполненных слотов
-    for (const slotDef of intentDef.slots) {
-      if (slots[slotDef.name] !== undefined && slotDef.validate) {
-        const validationResult = slotDef.validate(
-          slots[slotDef.name],
-          context,
-          context.currentLesson
-        );
-
-        if (typeof validationResult === 'string') {
-          validationErrors[slotDef.name] = validationResult;
-          console.warn(`❌ Validation failed for '${slotDef.name}':`, validationResult);
-        }
-      }
-    }
-
-    // 4. Найти незаполненные required слоты
-    const missingSlots = intentDef.slots.filter(
-      slotDef => slotDef.required && slots[slotDef.name] === undefined
-    );
-
-    return { slots, missingSlots, validationErrors };
+    return params;
   }
 
   /**
-   * Извлечь entities из CLU response в удобный формат
+   * Проверить, достаточно ли параметров для команды
    */
-  private extractEntities(cluResponse: CLUResponse): Record<string, any> {
-    const entities: Record<string, any> = {};
-
-    for (const entity of cluResponse.entities) {
-      const slotName = this.ENTITY_TO_SLOT[entity.category] || entity.category.toLowerCase();
-      entities[slotName] = entity.text;
+  validateParams(commandType: string, _params: Record<string, any>, context: DialogContext): {
+    isValid: boolean;
+    missingParams?: string[];
+    message?: string;
+  } {
+    // Базовая валидация - можно расширить позже
+    if (commandType !== 'OpenJournal' && !context.classId) {
+      return {
+        isValid: false,
+        message: 'Сначала откройте журнал'
+      };
     }
 
-    return entities;
-  }
-
-  /**
-   * Найти значение entity для слота
-   */
-  private findEntityValue(
-    slotDef: SlotDefinition,
-    extractedEntities: Record<string, any>
-  ): any | undefined {
-    // Сначала попробовать точное совпадение
-    if (extractedEntities[slotDef.name] !== undefined) {
-      return extractedEntities[slotDef.name];
-    }
-
-    // Попробовать через entityCategory
-    if (slotDef.entityCategory) {
-      const mappedSlotName = this.ENTITY_TO_SLOT[slotDef.entityCategory];
-      if (mappedSlotName && extractedEntities[mappedSlotName] !== undefined) {
-        return extractedEntities[mappedSlotName];
-      }
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Получить следующий prompt для недостающего слота
-   */
-  getNextPrompt(missingSlots: SlotDefinition[]): string | null {
-    if (missingSlots.length === 0) return null;
-    return missingSlots[0].prompt;
+    return { isValid: true };
   }
 }
