@@ -104,7 +104,8 @@ export class AppStore {
       : null;
 
     // Вычислить currentLesson
-    computed.currentLesson = state.lessons.find(l => l.id === state.currentLessonId) || null;
+    const foundLesson = state.lessons.find(l => l.id === state.currentLessonId);
+    computed.currentLesson = foundLesson ? this.enrichLesson(foundLesson, computed.currentGroup) : null;
 
     // Вычислить groupLessons - безопасный подход
     if (state.currentGroupId && computed.currentGroup) {

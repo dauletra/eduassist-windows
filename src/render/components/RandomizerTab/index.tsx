@@ -183,12 +183,19 @@ const RandomizerTab = () => {
     }
   }, [hasGroups, randomGroups.length]);
 
-  // Подписки на события от команд
   useEffect(() => {
     const unsubscribeRandom = voiceCommandBus.subscribe('random_student_selected', (data) => {
       console.log('🎲 random_student_selected event:', data);
       if (data?.studentName) {
         setSelectedStudent(data.studentName);
+
+        const studentName = data.studentName || 'Ученик';
+        // Добавьте анимацию или уведомление
+        setAnimatingStudent(`🎯 Выбран: ${studentName}`);
+
+        setTimeout(() => {
+          setAnimatingStudent(null);
+        }, 3000);
       }
     });
 
@@ -236,72 +243,20 @@ const RandomizerTab = () => {
     <div className="p-6 h-full overflow-y-auto">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Рандомайзер</h2>
 
-      <div className="space-y-6">
-        <div className="space-y-4">
-          <RandomizerSettings
-            includeAbsent={includeAbsent}
-            divisionMode={divisionMode}
-            groupCount={groupCount}
-            peoplePerGroup={peoplePerGroup}
-            groupStats={groupStats}
-            onIncludeAbsentChange={setIncludeAbsent}
-            onDivisionModeChange={setDivisionMode}
-            onCountChange={handleGroupCountChange}
-          />
-
-          <div className="flex gap-4">
-            <button
-              onClick={handleRandomStudentClick}
-              disabled={isRandomizing || availableStudents.length === 0}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-            >
-              <Shuffle size={20} className={isRandomizing ? 'animate-spin' : ''} />
-              {isRandomizing
-                ? 'Выбираю...'
-                : hasGroups ? 'Выбрать из всех' : 'Выбрать ученика'}
-            </button>
-
-            {hasSelectedStudent && (
-              <button
-                onClick={resetSelection}
-                className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all duration-200 flex items-center gap-2"
-              >
-                Сбросить выбор
-              </button>
-            )}
-            <button
-              onClick={handleDivideGroupsClick}
-              disabled={availableStudents.length === 0 || isFormingGroups}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-            >
-              <Users size={20} className={isFormingGroups ? 'animate-pulse' : ''} />
-              {isFormingGroups ? 'Формирую группы...' :
-                (divisionMode === 'groups'
-                    ? `Разделить на ${groupCount} ${groupCount === 1 ? 'группу' : groupCount < 5 ? 'группы' : 'групп'}`
-                    : `Разделить по ${peoplePerGroup} ${peoplePerGroup === 1 ? 'человеку' : peoplePerGroup < 5 ? 'человека' : 'человек'}`
-                )
-              }
-            </button>
-          </div>
-        </div>
-
-        {isFormingGroups && animatingStudent && (
-          <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-4 rounded-lg border-2 border-purple-300 animate-pulse">
-            <div className="text-center">
-              <div className="text-lg font-bold text-purple-800 mb-2">
-                {animatingStudent.includes('⚠️') ? '⚠️ Конфликты обнаружены' :
-                  animatingStudent.includes('✨') ? '✨ Идеальное решение' :
-                    animatingStudent.includes('✅') ? '✅ Готово' :
-                      animatingStudent.includes('🎉') ? '🎉 Успешно' :
-                        '🎲 Формирование групп'}
-              </div>
-              <div className="text-purple-700 font-medium">
-                {animatingStudent}
-              </div>
+      {selectedStudent && !hasGroups && (
+        <div className="bg-gradient-to-r from-green-100 to-blue-100 p-4 rounded-lg border-2 border-green-300 animate-pulse">
+          <div className="text-center">
+            <div className="text-lg font-bold text-green-800 mb-2">
+              🎯 Выбран ученик
+            </div>
+            <div className="text-green-700 font-medium text-xl">
+              {selectedStudent}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
+      <div className="space-y-6">
         {!hasGroups ? (
           <div className="bg-blue-50 p-4 rounded-lg">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
@@ -343,6 +298,70 @@ const RandomizerTab = () => {
                 onScoreSet={(value) => setGroupScoreDirectly(index, value)}
               />
             ))}
+          </div>
+        )}
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <button
+              onClick={handleRandomStudentClick}
+              disabled={isRandomizing || availableStudents.length === 0}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+            >
+              <Shuffle size={20} className={isRandomizing ? 'animate-spin' : ''} />
+              {isRandomizing
+                ? 'Выбираю...'
+                : hasGroups ? 'Выбрать из всех' : 'Выбрать ученика'}
+            </button>
+
+            {hasSelectedStudent && (
+              <button
+                onClick={resetSelection}
+                className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all duration-200 flex items-center gap-2"
+              >
+                Сбросить выбор
+              </button>
+            )}
+            <button
+              onClick={handleDivideGroupsClick}
+              disabled={availableStudents.length === 0 || isFormingGroups}
+              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+            >
+              <Users size={20} className={isFormingGroups ? 'animate-pulse' : ''} />
+              {isFormingGroups ? 'Формирую группы...' :
+                (divisionMode === 'groups'
+                    ? `Разделить на ${groupCount} ${groupCount === 1 ? 'группу' : groupCount < 5 ? 'группы' : 'групп'}`
+                    : `Разделить по ${peoplePerGroup} ${peoplePerGroup === 1 ? 'человеку' : peoplePerGroup < 5 ? 'человека' : 'человек'}`
+                )
+              }
+            </button>
+          </div>
+
+          <RandomizerSettings
+            includeAbsent={includeAbsent}
+            divisionMode={divisionMode}
+            groupCount={groupCount}
+            peoplePerGroup={peoplePerGroup}
+            groupStats={groupStats}
+            onIncludeAbsentChange={setIncludeAbsent}
+            onDivisionModeChange={setDivisionMode}
+            onCountChange={handleGroupCountChange}
+          />
+        </div>
+
+        {isFormingGroups && animatingStudent && (
+          <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-4 rounded-lg border-2 border-purple-300 animate-pulse">
+            <div className="text-center">
+              <div className="text-lg font-bold text-purple-800 mb-2">
+                {animatingStudent.includes('⚠️') ? '⚠️ Конфликты обнаружены' :
+                  animatingStudent.includes('✨') ? '✨ Идеальное решение' :
+                    animatingStudent.includes('✅') ? '✅ Готово' :
+                      animatingStudent.includes('🎉') ? '🎉 Успешно' :
+                        '🎲 Формирование групп'}
+              </div>
+              <div className="text-purple-700 font-medium">
+                {animatingStudent}
+              </div>
+            </div>
           </div>
         )}
       </div>
