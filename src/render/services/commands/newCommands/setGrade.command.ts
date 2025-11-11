@@ -10,7 +10,8 @@ export const setGradeCommand: NewCommand = {
   type: 'SetGrade',
 
   async execute(store: AppStore, params: Record<string, any>): Promise<NewCommandResult> {
-    const { studentName, numberValue } = params;
+    const StudentName = params.StudentName || params.studentName;
+    const NumberValue = params.NumberValue || params.numberValue;
     const state = store.getState();
 
     if (!state.currentLesson) {
@@ -20,10 +21,21 @@ export const setGradeCommand: NewCommand = {
       };
     }
 
-    const studentNameOrId = String(studentName).toLowerCase().trim();
-    const grade = Number(numberValue);
+    const studentNameOrId = String(StudentName).toLowerCase().trim();
 
-    console.log(`🎯 Executing SetGrade: ${studentNameOrId} -> ${grade}`);
+    let grade: number | null = null;
+    if (NumberValue !== null && NumberValue !== undefined && NumberValue !== '' && NumberValue !== 0) {
+      grade = Number(NumberValue);
+      // Проверяем, что это валидное число
+      if (isNaN(grade)) {
+        return {
+          success: false,
+          message: `"${NumberValue}" не является числом`
+        };
+      }
+    }
+
+    console.log(`🎯 Executing SetGrade: ${studentNameOrId} -> ${grade === null ? 'REMOVE' : grade}`);
 
     // Найти ученика по ID или имени
     let student = state.currentLesson.students.find(s => s.id === studentNameOrId);
@@ -37,7 +49,7 @@ export const setGradeCommand: NewCommand = {
     if (!student) {
       return {
         success: false,
-        message: `Ученик "${studentName}" не найден в списке`
+        message: `Ученик "${StudentName}" не найден в списке`
       };
     }
 
