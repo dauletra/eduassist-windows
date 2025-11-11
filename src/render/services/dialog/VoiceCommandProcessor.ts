@@ -2,7 +2,7 @@
 
 import type { CLUResponse } from '../CLUService';
 import { DialogState } from './DialogState';
-import { SlotFiller } from './SlotFiller';
+// import { SlotFiller } from './SlotFiller';
 import type { DialogContext } from '../commands';
 import type { FinalCommandDispatcher } from '../commands'; // ИЗМЕНЕНО
 
@@ -16,12 +16,12 @@ export interface DialogResult {
 
 export class VoiceCommandProcessor {
   private state: DialogState;
-  private slotFiller: SlotFiller;
+  // private slotFiller: SlotFiller;
   private commandDispatcher: FinalCommandDispatcher; // ИЗМЕНЕНО
 
   constructor(commandDispatcher: FinalCommandDispatcher) { // ИЗМЕНЕНО
     this.state = new DialogState();
-    this.slotFiller = new SlotFiller();
+    // this.slotFiller = new SlotFiller();
     this.commandDispatcher = commandDispatcher;
   }
 
