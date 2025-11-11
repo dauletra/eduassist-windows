@@ -112,34 +112,7 @@ const EduAssistContent = () => {
   // Обработчик выбора группы
   const handleGroupSelect = async (groupId: string) => {
     console.log('➡️ Group selected:', groupId);
-
-    const cls = classes.find(c => c.groups.some(g => g.id === groupId));
-    const group = cls?.groups.find(g => g.id === groupId);
-
-    if (!cls || !group) {
-      console.log('❌ Group or class not found');
-      return;
-    }
-
-    // Исправленные регулярные выражения
-    const classNumber = cls.id.match(/\d+/)?.[0];
-    const classLetter = cls.id.match(/[A-Za-zА-Яа-яӘә]/)?.[0]; // Добавлены строчные буквы
-    const groupNumber = group.id.split('-')[1];
-
-    console.log('Class ID:', cls.id);
-    console.log('Group ID:', group.id);
-    console.log('Parsed:', { classNumber, classLetter, groupNumber });
-
-    if (!classNumber || !classLetter || !groupNumber) {
-      console.log('❌ Failed to parse class/group data');
-      return;
-    }
-
-    await commandDispatcher.executeFromUI('OpenJournal', {
-      classNumber,
-      classLetter,
-      groupNumber
-    });
+    await commandDispatcher.executeFromUI('OpenJournal', { groupId });
   };
 
   // Обработчик возврата к выбору групп

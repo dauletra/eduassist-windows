@@ -11,6 +11,17 @@ export const openJournalCommand: NewCommand = {
   type: 'OpenJournal',
 
   async execute(_store: AppStore, params: Record<string, any>): Promise<NewCommandResult> {
+    if (params.groupId) {
+      const groupId = String(params.groupId).trim();
+      const groupParts = groupId.split('-');
+      if (groupParts.length === 2) {
+        const classPart = groupParts[0];
+        params.classNumber = classPart.match(/\d+/)?.[0];
+        params.classLetter = classPart.match(/[a-zA-Zа-яА-ЯәӘ]/)?.[0]?.toLowerCase() || '';
+        params.groupNumber = groupParts[1];
+      }
+    }
+
     const classNumber = String(params.classNumber || '').trim();
     let classLetter = String(params.classLetter || '').trim().toLowerCase();
     const groupNumber = String(params.groupNumber || '').trim();
@@ -82,7 +93,7 @@ export const openJournalCommand: NewCommand = {
       console.log(`✅ Group found: ${targetGroup.name}`);
 
       // Загружаем уроки группы
-      const groupLessons = await window.electronAPI.getAllLessons(classId, groupId);
+      let groupLessons = await window.electronAPI.getAllLessons(classId, groupId);
 
       // Пытаемся найти урок на сегодня
       let todayLesson = await window.electronAPI.getTodayLesson(classId, groupId);
@@ -95,6 +106,10 @@ export const openJournalCommand: NewCommand = {
           groupId,
           'Урок физики. Тема'
         );
+
+        // ОБНОВЛЯЕМ СПИСОК УРОКОВ ПОСЛЕ СОЗДАНИЯ НОВОГО
+        const updatedGroupLessons = await window.electronAPI.getAllLessons(classId, groupId);
+        groupLessons = updatedGroupLessons;
       }
 
       const displayName = classLetter
