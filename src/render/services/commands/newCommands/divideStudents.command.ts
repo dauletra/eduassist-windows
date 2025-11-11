@@ -2,6 +2,7 @@
 
 import type { NewCommand, NewCommandResult } from '../NewCommandDispatcher';
 import type { AppStore } from '../../../store';
+import { voiceCommandBus } from '../../CommandEventBus.ts';
 import { createBalancedGroups, calculateTargetSizes } from '../definitions/groupFormationAlgorithm';
 
 /**
@@ -11,7 +12,11 @@ export const divideByGroupCountCommand: NewCommand = {
   type: 'DivideByGroupCount',
 
   async execute(store: AppStore, params: Record<string, any>): Promise<NewCommandResult> {
-    const { numberValue: groupCount, onlyPresent = true } = params;
+    const groupCount = params.numberValue || params.NumberValue || params.groupNumber || params.count;
+    const onlyPresent = params.onlyPresent !== false;
+
+    console.log('🔍 DivideByGroupCount params:', { params, groupCount, onlyPresent });
+
     const state = store.getState();
 
     if (!state.currentLesson) {
@@ -33,10 +38,19 @@ export const divideByGroupCountCommand: NewCommand = {
       };
     }
 
-    if (groupCount > students.length) {
+    // ✅ Проверяем, что groupCount валидный
+    const parsedGroupCount = parseInt(groupCount);
+    if (isNaN(parsedGroupCount) || parsedGroupCount <= 0) {
       return {
         success: false,
-        message: `Нельзя создать ${groupCount} групп из ${students.length} учеников`
+        message: `Некорректное количество групп: ${groupCount}`
+      };
+    }
+
+    if (parsedGroupCount > students.length) {
+      return {
+        success: false,
+        message: `Нельзя создать ${parsedGroupCount} групп из ${students.length} учеников`
       };
     }
 
@@ -60,7 +74,25 @@ export const divideByGroupCountCommand: NewCommand = {
       groupCount === 3 || groupCount === 4 ? 'группы' : 'групп';
     const message = `Ученики разделены на ${groupCount} ${groupWord}`;
 
-    console.log('👥 Groups formed by count:', groups.map(g => g.length));
+    console.log('👥 Groups formed by count:', {
+      groupCount: parsedGroupCount,
+      groupSizes: groups.map(g => g.length),
+      totalStudents: students.length,
+      message
+    });
+
+
+    // В конце execute метода
+    voiceCommandBus.emit('groups_formed', {
+      type: 'groups_formed',
+      method: 'by_count', // или 'by_count'
+      groupSize: groups.map(g => g.length), // для by_size
+      groupCount: groupCount, // для by_count
+      groups: groups.map(group => group.map(s => ({
+        id: s.id,
+        name: s.name
+      })))
+    });
 
     return {
       success: true,
@@ -85,7 +117,11 @@ export const divideByGroupSizeCommand: NewCommand = {
   type: 'DivideByGroupSize',
 
   async execute(store: AppStore, params: Record<string, any>): Promise<NewCommandResult> {
-    const { numberValue: groupSize, onlyPresent = true } = params;
+    const groupSize = params.numberValue || params.NumberValue || params.groupNumber || params.size;
+    const onlyPresent = params.onlyPresent !== false; // по умолчанию true
+
+    console.log('🔍 DivideByGroupSize params:', { params, groupSize, onlyPresent });
+
     const state = store.getState();
 
     if (!state.currentLesson) {
@@ -104,6 +140,22 @@ export const divideByGroupSizeCommand: NewCommand = {
       return {
         success: false,
         message: onlyPresent ? 'Нет присутствующих учеников' : 'Список учеников пуст'
+      };
+    }
+
+    // ✅ Проверяем, что groupSize валидный
+    const parsedGroupSize = parseInt(groupSize);
+    if (isNaN(parsedGroupSize) || parsedGroupSize <= 0) {
+      return {
+        success: false,
+        message: `Некорректное количество человек в группе: ${groupSize}`
+      };
+    }
+
+    if (parsedGroupSize > students.length) {
+      return {
+        success: false,
+        message: `Нельзя создать группы по ${parsedGroupSize} человек из ${students.length} учеников`
       };
     }
 
@@ -132,6 +184,18 @@ export const divideByGroupSizeCommand: NewCommand = {
     const message = `Ученики разделены по ${groupSize} ${studentWord}. Получилось ${groupsCount} ${groupWord}`;
 
     console.log('👥 Groups formed by size:', groups.map(g => g.length));
+
+    // В конце execute метода
+    voiceCommandBus.emit('groups_formed', {
+      type: 'groups_formed',
+      method: 'by_size', // или 'by_count'
+      groupSize: parsedGroupSize, // для by_size
+      groupCount: groupsCount, // для by_count
+      groups: groups.map(group => group.map(s => ({
+        id: s.id,
+        name: s.name
+      })))
+    });
 
     return {
       success: true,

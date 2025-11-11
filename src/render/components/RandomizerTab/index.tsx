@@ -133,16 +133,45 @@ const RandomizerTab = () => {
     setAnimatingStudent('🎲 Формирую группы...');
 
     try {
+      let result;
       if (divisionMode === 'groups') {
-        await commands.divideByGroupCount(groupCount, !includeAbsent);
+        result = await commands.divideByGroupCount(groupCount, !includeAbsent);
       } else {
-        await commands.divideByGroupSize(peoplePerGroup, !includeAbsent);
+        result = await commands.divideByGroupSize(peoplePerGroup, !includeAbsent);
+      }
+
+      // ✅ ВРУЧНУЮ обновляем состояние после успешного выполнения команды
+      if (result.success && result.data?.groups) {
+        const groupsAsNames = result.data.groups.map((group: any[]) =>
+          group.map((student: any) => student.name)
+        );
+
+        setRandomGroups(groupsAsNames);
+        setGroupScores(new Array(groupsAsNames.length).fill(0));
+        setSelectedGroupStudents(new Array(groupsAsNames.length).fill(null));
+        setSelectedStudent(null);
+        setAnimatingStudent('✅ Группы созданы!');
+
+        setTimeout(() => {
+          setAnimatingStudent(null);
+        }, 2000);
+      } else if (!result.success) {
+        console.error('❌ Divide groups failed:', result.message);
+        setAnimatingStudent(`❌ Ошибка: ${result.message}`);
+
+        setTimeout(() => {
+          setAnimatingStudent(null);
+        }, 3000);
       }
     } catch (error) {
       console.error('❌ Divide groups failed:', error);
+      setAnimatingStudent('❌ Ошибка при формировании групп');
+
+      setTimeout(() => {
+        setAnimatingStudent(null);
+      }, 3000);
     } finally {
       setIsFormingGroups(false);
-      setAnimatingStudent(null);
     }
   }, [commands, divisionMode, groupCount, peoplePerGroup, includeAbsent]);
 
@@ -199,12 +228,31 @@ const RandomizerTab = () => {
       }
     });
 
-    const unsubscribeGroups = voiceCommandBus.subscribe('groups_formed', (data) => {
-      console.log('👥 groups_formed event:', data);
-      if (data?.groups) {
+    const unsubscribeGroups = voiceCommandBus.subscribe('groups_formed', (data: any) => {
+      console.log('👥 groups_formed event received:', data);
+
+      // ✅ Обрабатываем данные из вашего JSON
+      if (data?.groups && Array.isArray(data.groups)) {
+        console.log('📊 Processing groups data:', {
+          groupCount: data.groups.length,
+          method: data.method,
+          groupSize: data.groupSize
+        });
+
+        // Преобразуем группы в формат для UI
         const groupsAsNames = data.groups.map((group: any[]) =>
-          group.map((student: any) => student.name)
+          group.map((student: any) => {
+            // Обрабатываем оба формата: с name и без
+            if (typeof student === 'string') {
+              return student;
+            } else if (student && typeof student === 'object') {
+              return student.name || `Ученик ${student.id}`;
+            }
+            return 'Неизвестный ученик';
+          })
         );
+
+        console.log('🎯 Setting randomGroups:', groupsAsNames);
 
         setRandomGroups(groupsAsNames);
         setGroupScores(new Array(groupsAsNames.length).fill(0));
@@ -215,6 +263,8 @@ const RandomizerTab = () => {
         setTimeout(() => {
           setAnimatingStudent(null);
         }, 2000);
+      } else {
+        console.warn('⚠️ Invalid groups data received:', data);
       }
     });
 
@@ -243,8 +293,8 @@ const RandomizerTab = () => {
     <div className="p-6 h-full overflow-y-auto">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Рандомайзер</h2>
 
-      {selectedStudent && !hasGroups && (
-        <div className="bg-gradient-to-r from-green-100 to-blue-100 p-4 rounded-lg border-2 border-green-300 animate-pulse">
+      {selectedStudent && (
+        <div className="bg-gradient-to-r from-green-100 to-blue-100 p-4 my-4 rounded-lg border-2 border-green-300 animate-pulse">
           <div className="text-center">
             <div className="text-lg font-bold text-green-800 mb-2">
               🎯 Выбран ученик

@@ -80,6 +80,20 @@ export class FinalCommandDispatcher {
       normalized.groupNumber = this.normalizeGroupNumber(params.NumberValue);
     }
 
+    // Нормализуем числовые параметры
+    if (params.NumberValue !== undefined) {
+      normalized.numberValue = params.NumberValue;
+    }
+    if (params.groupNumber !== undefined) {
+      normalized.numberValue = normalized.numberValue || params.groupNumber;
+    }
+
+    // Очищаем строковые числовые значения
+    if (typeof normalized.numberValue === 'string') {
+      // Убираем точку в конце, если есть
+      normalized.numberValue = normalized.numberValue.replace(/\.$/, '');
+    }
+
     return normalized;
   }
 
