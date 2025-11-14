@@ -5,5 +5,7 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "../../dist-electron",
-  }
+    "rootDir": "./"
+  },
+  "exclude": ["../render"]
 }

@@ -1,12 +1,16 @@
-// services/VoiceCommandBus.ts
+// src/render/services/VoiceCommandBus.ts
 type VoiceEvent =
-  | 'command-recognized'
+  | 'speech-recognized'      // ✅ НОВОЕ: STT завершил распознавание
+  | 'command-recognized'     // Команда распознана CLU
   | 'assistant-question'
   | 'assistant-message'
   | 'voice-error'
   | 'state-changed';
 
 interface VoiceEventMap {
+  'speech-recognized': {     // ✅ НОВОЕ: только текст от STT
+    text: string;
+  };
   'command-recognized': {
     text: string;
     intent: string;

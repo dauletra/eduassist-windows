@@ -1,4 +1,5 @@
-import { ipcMain, BrowserWindow } from 'electron';
+// src/electron/api/handlers/window.handler.ts
+import { app, ipcMain, BrowserWindow } from 'electron';
 import { backupService } from '../services/backup.service.js';
 
 /**
@@ -21,10 +22,24 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
       if (backupPath) {
         console.log('💾 Резервная копия создана:', backupPath);
       }
-
       mainWindow.close();
       console.log('❌ Окно закрыто');
     }
+  });
+
+  // Получить путь к приложению
+  ipcMain.handle('get-app-path', async () => {
+    return app.getAppPath();
+  });
+
+  // Получить путь к ресурсам
+  ipcMain.handle('get-resources-path', async () => {
+    return process.resourcesPath;
+  });
+
+  // Получить путь к исполняемому файлу
+  ipcMain.handle('get-exe-path', async () => {
+    return app.getPath('exe');
   });
 
   console.log('🪟 Window handlers зарегистрированы');

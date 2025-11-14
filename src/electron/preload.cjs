@@ -3,6 +3,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // Главный API для приложения
 contextBridge.exposeInMainWorld('electronAPI', {
+    // ДОБАВЬТЕ ЭТИ МЕТОДЫ:
+    getAppPath: () => ipcRenderer.invoke('get-app-path'),
+    getModelPath: (modelName) => ipcRenderer.invoke('getModelPath', modelName),
+    getModelUrl: (modelName) => ipcRenderer.invoke('getModelUrl', modelName),
+    getModelFilePath: (modelName) => ipcRenderer.invoke('get-model-file-path', modelName),
+    getResourcesPath: () => ipcRenderer.invoke('get-resources-path'),
+
     // Методы для работы с уроками
     loadStudentsList: () => ipcRenderer.invoke('load-students-list'),
     getTodayLesson: (classId, groupId) => ipcRenderer.invoke('get-today-lesson', classId, groupId),
@@ -55,6 +62,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Голосовой ассистент
     startVoiceListening: () => ipcRenderer.invoke('start-voice-listening'),
     stopVoiceListening: () => ipcRenderer.invoke('stop-voice-listening'),
+    onWakeWordDetected: (callback) => ipcRenderer.on('voice:wakeword-detected', callback),
     onVoiceCommand: (callback) => ipcRenderer.on('voice-command', (_event, cmd) => callback(cmd)),
     onListeningStateChanged: (callback) => ipcRenderer.on('listening-state-changed', (_event, state) => callback(state)),
 });

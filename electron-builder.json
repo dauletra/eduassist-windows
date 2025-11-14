@@ -1,14 +1,26 @@
 {
   "appId": "com.dauletrakhmankul.eduassist-windows",
-  "files": ["dist-electron", "dist-react"],
+  "asar": false,
+  "files": ["dist-electron", "dist-react", "node_modules"],
   "extraResources": [
     {
-      "from": "src/electron/preload.cjs",
-      "to": "dist-electron/preload.cjs"
+      "from": "public/models",
+      "to": "models",
+      "filter": ["**/*"]
     }
   ],
+  "directories": {
+    "buildResources": "resources"
+  },
   "icon": "./desktopIcon.png",
   "win": {
-    "target": "portable"
+    "target": [
+      {
+        "target": "7z",
+        "arch": [
+          "x64"
+        ]
+      }
+    ]
   }
 }

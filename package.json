@@ -8,14 +8,15 @@
     "dev": "npm-run-all --parallel dev:react dev:electron",
     "dev:react": "vite",
     "dev:electron": "npm run transpile:electron && chcp 65001 >NUL && cross-env NODE_ENV=development LANG=en_US.UTF-8 electron .",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "transpile:electron": "tsc --project src/electron/tsconfig.json",
+    "transpile:electron": "tsc --project src/electron/tsconfig.json && copyfiles src/electron/preload.cjs dist-electron -f",
     "dist:win": "npm run transpile:electron && npm run build && electron-builder --win --x64"
   },
   "dependencies": {
-    "@picovoice/porcupine-react": "^3.0.3",
+    "@picovoice/porcupine-node": "^3.0.6",
+    "@picovoice/pvrecorder-node": "^1.2.8",
     "lucide-react": "^0.542.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
@@ -27,6 +28,7 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.4.21",
+    "copyfiles": "^2.4.1",
     "cross-env": "^10.0.0",
     "electron": "^32.1.2",
     "electron-builder": "^25.0.5",

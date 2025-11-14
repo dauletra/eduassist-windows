@@ -1,7 +1,6 @@
-// hooks/useIsolatedVoiceAssistant.ts
+// src/render/hooks/useIsolatedVoiceAssistant.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { usePorcupine } from '@picovoice/porcupine-react';
-import { audioService } from '../services/AudioService';
+import { createAudioService } from '../services/AudioService';
 import { createWebSocketService } from '../services/WebSocketService';
 import { createCLUService } from '../services/CLUService';
 import { VOICE_CONFIG } from '../config/voiceConfig';
@@ -40,42 +39,30 @@ export const useIsolatedVoiceAssistant = () => {
     assistantMessage: null,
   });
 
-  const isInitializedRef = useRef(false);
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ✅ ИЗМЕНЕНИЕ: Создаем экземпляры через factory функции
+  const audioServiceRef = useRef(createAudioService());
   const wsServiceRef = useRef(
     createWebSocketService({
       baseUrl: VOICE_CONFIG.api.baseUrl,
       apiKey: VOICE_CONFIG.api.apiKey,
-      language: VOICE_CONFIG.api.language
+      language: VOICE_CONFIG.api.language,
     })
   );
-
   const cluServiceRef = useRef(
     createCLUService({
       baseUrl: VOICE_CONFIG.api.baseUrl,
       apiKey: VOICE_CONFIG.api.apiKey,
-      locale: VOICE_CONFIG.api.language
+      locale: VOICE_CONFIG.api.language,
     })
   );
 
-  const {
-    keywordDetection,
-    isLoaded,
-    isListening,
-    error: porcupineError,
-    init,
-    start: startPorcupine,
-    stop: stopPorcupine,
-    release
-  } = usePorcupine();
-
-  // Обновление состояния с публикацией событий
+  // Обновление состояния + публикация событий
   const updateState = useCallback((updates: Partial<VoiceAssistantState>) => {
     setAssistantState(prev => {
       const newState = { ...prev, ...updates };
 
-      // Публикуем события в bus
       if (updates.state !== undefined) {
         voiceCommandBus.publish('state-changed', updates.state);
       }
@@ -93,29 +80,9 @@ export const useIsolatedVoiceAssistant = () => {
     });
   }, []);
 
-  // Обработка ошибок Porcupine
-  useEffect(() => {
-    if (porcupineError) {
-      console.error('❌ Porcupine error:', porcupineError);
-      updateState({
-        state: 'error',
-        error: porcupineError.toString()
-      });
-    }
-  }, [porcupineError, updateState]);
-
-  // Автостарт при загрузке
-  useEffect(() => {
-    if (isLoaded && !isInitializedRef.current) {
-      console.log('👂 Starting wake word detection...');
-      startPorcupine();
-      isInitializedRef.current = true;
-    }
-  }, [isLoaded, startPorcupine]);
-
   // Начать захват аудио
   const startAudioCapture = useCallback(() => {
-    audioService.startCapture((audioData) => {
+    audioServiceRef.current.startCapture((audioData) => {
       if (wsServiceRef.current.isConnected()) {
         wsServiceRef.current.send(audioData);
       }
@@ -124,9 +91,7 @@ export const useIsolatedVoiceAssistant = () => {
 
   // Остановить запись команды
   const stopCommandRecording = useCallback(() => {
-    console.log('🛑 Stopping command recording...');
-
-    audioService.stopCapture();
+    audioServiceRef.current.stopCapture();
 
     if (wsServiceRef.current.isConnected()) {
       wsServiceRef.current.stop();
@@ -139,231 +104,163 @@ export const useIsolatedVoiceAssistant = () => {
 
     updateState({
       state: 'waiting-wakeword',
-      partialTranscript: null
+      partialTranscript: null,
     });
-
-    console.log('✅ Recording stopped, state reset to waiting-wakeword');
   }, [updateState]);
 
   // Вернуться в режим ожидания wake-word
   const returnToWaitingMode = useCallback(() => {
-    console.log('🔄 Returning to waiting mode...');
-
     updateState({
       state: 'waiting-wakeword',
       partialTranscript: null,
       assistantQuestion: null,
-      assistantMessage: null
+      assistantMessage: null,
     });
+  }, [updateState]);
 
-    if (!isListening) {
-      console.log('👂 Restarting wake word detection...');
-      startPorcupine();
-    }
-  }, [isListening, startPorcupine, updateState]);
-
-  // Начать запись команды
+  // ✅ ИЗМЕНЕНИЕ: Начать запись команды с разделенными колбеками
   const startCommandRecording = useCallback(async () => {
     try {
       updateState({
         state: 'recording-command',
-        partialTranscript: null
+        partialTranscript: null,
       });
-
-      console.log('🎙️ Starting command recording...');
 
       const wsCallbacks = {
         onReady: () => {
-          console.log('✅ STT ready, starting audio capture...');
           startAudioCapture();
         },
-
         onPartial: (text: string) => {
-          updateState({
-            partialTranscript: text
-          });
+          updateState({ partialTranscript: text });
         },
+        // ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: STT только публикует событие, не вызывает CLU
+        onFinal: (text: string) => {
+          console.log('🎤 STT Final:', text);
 
-        onFinal: async (text: string) => {
-          console.log('✅ Final transcript:', text);
+          // Публикуем событие "речь распознана"
+          voiceCommandBus.publish('speech-recognized', { text });
 
+          // Обновляем UI
           updateState({
             state: 'processing',
             lastCommand: text,
-            partialTranscript: null
+            partialTranscript: null,
           });
 
-          try {
-            console.log('🧠 Sending to CLU for intent recognition...');
-            const cluResponse = await cluServiceRef.current.predict(text);
-
-            // ПУБЛИКУЕМ СОБЫТИЕ В BUS
-            voiceCommandBus.publish('command-recognized', {
-              text,
-              intent: cluResponse.topIntent,
-              entities: cluResponse.entities,
-              cluResponse
-            });
-
-            // Останавливаем запись
-            stopCommandRecording();
-
-            // Устанавливаем сообщение об успехе
-            updateState({
-              assistantMessage: 'Команда распознана'
-            });
-
-            // Автоматически возвращаемся в режим ожидания
-            setTimeout(() => {
-              returnToWaitingMode();
-            }, 2000);
-
-          } catch (error) {
-            console.error('❌ Failed to process command:', error);
-
-            stopCommandRecording();
-
-            updateState({
-              state: 'error',
-              error: error instanceof Error ? error.message : 'Ошибка обработки команды',
-              assistantQuestion: null,
-              assistantMessage: null
-            });
-
-            setTimeout(() => {
-              returnToWaitingMode();
-            }, 3000);
-          }
-        },
-
-        onError: (error: string) => {
-          console.error('❌ WebSocket error:', error);
-          updateState({
-            state: 'error',
-            error
-          });
-
+          // Останавливаем запись
           stopCommandRecording();
-        }
+        },
+        onError: (error: string) => {
+          updateState({ state: 'error', error });
+          stopCommandRecording();
+        },
       };
 
-      // Подключаем WebSocket
       if (!wsServiceRef.current.isConnected()) {
-        console.log('🔌 WebSocket not connected, connecting...');
         await wsServiceRef.current.connect(wsCallbacks);
       } else {
-        console.log('✅ WebSocket already connected, updating callbacks and starting capture...');
         await wsServiceRef.current.connect(wsCallbacks);
       }
 
-      // Таймаут максимальной длины записи
       recordingTimeoutRef.current = setTimeout(() => {
-        console.log('⏱️ Max recording time reached');
         stopCommandRecording();
-
         updateState({
           state: 'waiting-wakeword',
-          assistantMessage: 'Время записи истекло'
+          assistantMessage: 'Время записи истекло',
+        });
+        setTimeout(() => {
+          returnToWaitingMode();
+        }, 2000);
+      }, VOICE_CONFIG.timeouts.maxRecordingTime);
+    } catch (error) {
+      updateState({
+        state: 'error',
+        error: error instanceof Error ? error.message : 'Ошибка записи',
+      });
+    }
+  }, [startAudioCapture, stopCommandRecording, returnToWaitingMode, updateState]);
+
+  // ✅ НОВОЕ: Отдельный обработчик для CLU (подписывается на событие 'speech-recognized')
+  useEffect(() => {
+    const handleSpeechRecognized = async ({ text }: { text: string }) => {
+      console.log('🧠 Processing with CLU:', text);
+
+      try {
+        const cluResponse = await cluServiceRef.current.predict(text);
+
+        // Публикуем событие "команда распознана" с intent и entities
+        voiceCommandBus.publish('command-recognized', {
+          text,
+          intent: cluResponse.topIntent,
+          entities: cluResponse.entities,
+          cluResponse,
+        });
+
+        updateState({
+          assistantMessage: 'Команда распознана',
         });
 
         setTimeout(() => {
           returnToWaitingMode();
         }, 2000);
-      }, VOICE_CONFIG.timeouts.maxRecordingTime);
 
-    } catch (error) {
-      console.error('❌ Failed to start recording:', error);
-      updateState({
-        state: 'error',
-        error: error instanceof Error ? error.message : 'Ошибка записи'
-      });
-    }
-  }, [startAudioCapture, stopCommandRecording, returnToWaitingMode, updateState]);
+      } catch (error) {
+        console.error('❌ CLU failed:', error);
+        updateState({
+          state: 'error',
+          error: error instanceof Error ? error.message : 'Ошибка обработки команды',
+        });
 
-  // Обработка детекции wake-word
+        setTimeout(() => {
+          returnToWaitingMode();
+        }, 3000);
+      }
+    };
+
+    // ✅ Подписываемся на событие распознавания речи
+    const unsubscribe = voiceCommandBus.subscribe('speech-recognized', handleSpeechRecognized);
+
+    return unsubscribe;
+  }, [returnToWaitingMode, updateState]);
+
+  // Подписка на событие wake-word от Node
   useEffect(() => {
-    if (keywordDetection && keywordDetection.label === VOICE_CONFIG.picovoice.wakeWord) {
-      console.log(`🎯 Wake word "${VOICE_CONFIG.picovoice.wakeWord}" detected!`);
-
-      updateState({
-        state: 'wakeword-detected',
-        partialTranscript: null
-      });
-
+    window.electronAPI.onWakeWordDetected(() => {
+      updateState({ state: 'wakeword-detected', partialTranscript: null });
       setTimeout(() => {
         startCommandRecording();
       }, VOICE_CONFIG.timeouts.wakeWordDelay);
-    }
-  }, [keywordDetection, startCommandRecording, updateState]);
+    });
+  }, [startCommandRecording, updateState]);
 
   // Инициализация
-  const initialize = useCallback(async () => {
-    if (isInitializedRef.current) {
-      console.log('⚠️ Already initialized, skipping...');
-      return;
-    }
-
+  const start = useCallback(async () => {
     try {
-      updateState({
-        state: 'initializing',
-        error: null
-      });
+      updateState({ state: 'initializing', error: null });
 
-      console.log('🚀 Initializing voice assistant...');
-
-      await audioService.initialize();
-      console.log('✅ AudioService initialized');
-
-      await init(
-        VOICE_CONFIG.picovoice.accessKey,
-        {
-          publicPath: VOICE_CONFIG.picovoice.wakeWordPath,
-          label: VOICE_CONFIG.picovoice.wakeWord
-        },
-        {
-          publicPath: VOICE_CONFIG.picovoice.modelPath
-        }
-      );
-
-      console.log('✅ Porcupine initialized');
+      await window.electronAPI.startVoiceListening();
+      await audioServiceRef.current.initialize();
 
       updateState({
-        state: 'waiting-wakeword',
         isActive: true,
-        isMicAvailable: true
+        isMicAvailable: true,
+        state: 'waiting-wakeword',
       });
-
     } catch (error) {
-      console.error('❌ Failed to initialize:', error);
+      console.error('❌ Voice assistant start failed:', error);
       updateState({
         state: 'error',
         isActive: false,
         isMicAvailable: false,
-        error: error instanceof Error ? error.message : 'Ошибка инициализации'
+        error: error instanceof Error ? error.message : 'Ошибка инициализации',
       });
     }
-  }, [init, updateState]);
+  }, [updateState]);
 
-  // Запуск
-  const start = useCallback(async () => {
-    await initialize();
-  }, [initialize]);
-
-  // Остановка
   const stop = useCallback(async () => {
-    console.log('🛑 Stopping voice assistant completely...');
-
     stopCommandRecording();
-
-    if (isListening) {
-      await stopPorcupine();
-    }
-
-    wsServiceRef.current.disconnect();
-    audioService.dispose();
-
-    isInitializedRef.current = false;
-
+    await window.electronAPI.stopVoiceListening();
+    audioServiceRef.current.dispose();
     updateState({
       state: 'inactive',
       isActive: false,
@@ -374,21 +271,14 @@ export const useIsolatedVoiceAssistant = () => {
       assistantQuestion: null,
       assistantMessage: null,
     });
+  }, [stopCommandRecording, updateState]);
 
-    console.log('✅ Voice assistant stopped completely');
-  }, [isListening, stopPorcupine, stopCommandRecording, updateState]);
-
-  // Cleanup
   useEffect(() => {
     return () => {
-      if (isInitializedRef.current) {
-        stopPorcupine();
-        release();
-        audioService.dispose();
-        wsServiceRef.current.disconnect();
-      }
+      audioServiceRef.current.dispose();
+      wsServiceRef.current.disconnect();
     };
-  }, [release, stopPorcupine]);
+  }, []);
 
   return {
     state: assistantState.state,
@@ -403,6 +293,6 @@ export const useIsolatedVoiceAssistant = () => {
     stop,
     startManualRecording: startCommandRecording,
     stopManualRecording: stopCommandRecording,
-    returnToWaitingMode
+    returnToWaitingMode,
   };
 };

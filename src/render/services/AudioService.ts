@@ -1,3 +1,4 @@
+// src/render/services/AudioService.ts
 /**
  * AudioService - управление захватом аудио с микрофона
  * Конфигурация: 16 kHz, mono, PCM16
@@ -158,4 +159,5 @@ export class AudioService {
   }
 }
 
-export const audioService = new AudioService();
+export const createAudioService = () => new AudioService();
+export const audioService = createAudioService(); // для совместимости

@@ -14,6 +14,7 @@ let mainWindow: BrowserWindow | null = null;
  * Создание главного окна приложения
  */
 export function createMainWindow(): BrowserWindow {
+  console.log('🏗️ createMainWindow вызван');
   const appTitle = isDev() ? 'EduAssist - AI-Maral (dev)' : 'EduAssist - AI-Maral';
 
   mainWindow = new BrowserWindow({
@@ -28,14 +29,14 @@ export function createMainWindow(): BrowserWindow {
       nodeIntegration: false,
       contextIsolation: true,
       preload: isDev()
-        ? path.join(process.cwd(), 'src', 'electron', 'preload.cjs')
-        : path.join(process.resourcesPath, 'dist-electron', 'preload.cjs'),
+        ? path.join(process.cwd(), 'dist-electron', 'preload.cjs')
+        : path.join(__dirname, '..', 'preload.cjs'),
       webSecurity: true
     }
   });
 
   // Загружаем React приложение
-  loadMainWindowContent();
+  // loadMainWindowContent();
 
   // Настраиваем обработчики событий окна
   setupMainWindowEvents();
@@ -48,7 +49,7 @@ export function createMainWindow(): BrowserWindow {
 /**
  * Загрузка контента в главное окно
  */
-function loadMainWindowContent(): void {
+export function loadMainWindowContent(): void {
   if (!mainWindow) return;
 
   if (isDev()) {

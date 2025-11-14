@@ -1,8 +1,11 @@
+// src/render/config/voiceConfig.ts
+
 export const VOICE_CONFIG = {
   picovoice: {
-    accessKey: 'xyPprdlNFdFKVmbioY+4PjGXilmlSIGXaFqEmh+pQr5UPK5gOLSSAw==', // Замените!
-    wakeWordPath: '/resources/Ai-Maral_en_wasm_v3_0_0.ppn',
-    modelPath: '/porcupine_params.pv',
+    // accessKey: 'xyPprdlNFdFKVmbioY+4PjGXilmlSIGXaFqEmh+pQr5UPK5gOLSSAw==', // Wasm!
+    accessKey: 'POZ3tE0eQkgUjDsoG/DVqsuoW5j6JfuJjIQPbjM5o1VuKMI/vuYNBg==', // Windows!
+    // wakeWordPath: '/resources/Ai-Maral_en_wasm_v3_0_0.ppn',
+    // modelPath: '/porcupine_params.pv',
     wakeWord: 'Ai Maral'
   },
 

@@ -34,7 +34,7 @@ export function createSettingsWindow(parentWindow: BrowserWindow): BrowserWindow
       nodeIntegration: false,
       contextIsolation: true,
       preload: isDev()
-        ? path.join(process.cwd(), 'src', 'electron', 'preload.cjs')
+        ? path.join(process.cwd(), 'dist-electron', 'preload.cjs')
         : path.join(__dirname, '..', 'preload.cjs'),
       webSecurity: true
     }

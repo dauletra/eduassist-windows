@@ -1,4 +1,4 @@
-// src/App.tsx
+// src/render/App.tsx
 import { useEffect, useRef } from 'react';
 // import type { SelectedGroup } from './types';
 import './App.css';
@@ -25,7 +25,7 @@ const EduAssistContent = () => {
   const dialogContext = useDialogContext(); // Получаем DialogContext из Store
 
   const {
-    classes,
+    // classes,
     currentLesson,
     currentGroup,
     // currentClass,

@@ -16,7 +16,7 @@ import {registerLessonPlansHandlers} from "./handlers/lesson-plans.handler.js";
  * Инициализация и регистрация всех IPC обработчиков
  */
 export function setupElectronAPI(mainWindow: BrowserWindow): void {
-  console.log('🔧 Инициализация Electron API...');
+  console.log('🔧 setupElectronAPI вызван');
 
   // Инициализация структуры данных
   initService.initialize();
@@ -33,7 +33,7 @@ export function setupElectronAPI(mainWindow: BrowserWindow): void {
   // Очистка старых резервных копий
   backupService.cleanupOldBackups()
 
-  console.log('✅ Electron API инициализирован');
+  console.log('✅ setupElectronAPI завершён');
 }
 
 // Реэкспорт для обратной совместимости

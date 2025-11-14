@@ -2,7 +2,7 @@
 
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { setupElectronAPI } from './api/index.js';
-import { createMainWindow, getMainWindow, sendToMainWindow } from './windows/main-window.js';
+import {createMainWindow, getMainWindow, loadMainWindowContent, sendToMainWindow} from './windows/main-window.js';
 import { createSettingsWindow } from './windows/settings-window.js';
 import { lessonService } from './api/services/lesson.service.js';
 import { isDev } from './utils/dev-config.js'
@@ -47,8 +47,11 @@ app.whenReady().then(async () => {
 
   const mainWindow = createMainWindow();
 
-  // Инициализируем API после создания окна
+  console.log('➡️ Вызываем setupElectronAPI');
   setupElectronAPI(mainWindow);
+
+  console.log('➡️ Загружаем контент окна');
+  loadMainWindowContent()
 
   // Настраиваем обработчики окон
   setupWindowHandlers();

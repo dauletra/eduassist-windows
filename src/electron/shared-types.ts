@@ -1,7 +1,4 @@
-// Общие интерфейсы для всего приложения
-
-// Расширенный интерфейс для window.electronAPI
-import type {EnrichedLesson} from "../render/types/index.js";
+// src/electron/shared-types.ts
 
 export interface IElectronAPI {
   // Работа с уроками
@@ -35,6 +32,12 @@ export interface IElectronAPI {
   // Настройки
   loadSettings: () => Promise<AppConfig>;
   saveSettings: (settings: Partial<AppConfig>) => Promise<{ success: boolean }>;
+
+  getModelPath: (modelName: string) => Promise<string>;
+  getModelUrl: (modelName: string) => Promise<string>;
+  getModelFilePath: (modelName: string) => Promise<string>; // Добавляем новый метод
+  getAppPath: () => Promise<string>;
+  getResourcesPath: () => Promise<string>; // Добавляем новый метод
 
   // Управление классами
   addClassWithGroups: (className: string, groupNames: string[]) => Promise<{ success: boolean; class: Class }>;
@@ -89,6 +92,14 @@ export interface Lesson {
   classId: string;
   groupId: string;
   students: LessonStudent[];
+}
+
+export interface EnrichedLessonStudent extends LessonStudent {
+  name: string
+}
+
+export interface EnrichedLesson extends Omit<Lesson, 'students'> {
+  students: EnrichedLessonStudent[]
 }
 
 // Context types - ОБНОВЛЕНО
