@@ -3,14 +3,14 @@
 import { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { AppStore, useStore } from '../store';
-import { FinalCommandDispatcher } from '../services/commands';
+import { CommandDispatcher } from '../services/commands';
 
 /**
  * Единый React Context который заменяет все предыдущие контексты
  */
 interface StoreContextValue {
   store: AppStore;
-  commandDispatcher: FinalCommandDispatcher;
+  commandDispatcher: CommandDispatcher;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -31,8 +31,8 @@ export function StoreProvider({ children, store }: StoreProviderProps) {
 
   // Создаем CommandDispatcher
   const commandDispatcher = useMemo(() => {
-    console.log('🏗️ Creating FinalCommandDispatcher');
-    return new FinalCommandDispatcher(appStore);
+    console.log('🏗️ Creating CommandDispatcher');
+    return new CommandDispatcher(appStore);
   }, [appStore]);
 
   const value: StoreContextValue = useMemo(() => ({
@@ -63,7 +63,7 @@ export function useAppStore(): AppStore {
 /**
  * Хук для получения CommandDispatcher
  */
-export function useCommandDispatcher(): FinalCommandDispatcher {
+export function useCommandDispatcher(): CommandDispatcher {
   const ctx = useContext(StoreContext);
 
   if (ctx === null) {

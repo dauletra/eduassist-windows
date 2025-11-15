@@ -1,138 +1,18 @@
-﻿Project structure (excluded: node_modules, .git, .idea)
-Generated: 11/14/2025 22:38:51
+﻿Project structure (excluded: node_modules, dist-render, dist-electron, dist, .git, .idea)
+Generated: 11/15/2025 15:06:36
 
 .
-|-- dist
-|   |-- .icon-ico
-|   |   +-- icon.ico
-|   |-- win-unpacked
-|   |   |-- locales
-|   |   |   |-- af.pak
-|   |   |   |-- am.pak
-|   |   |   |-- ar.pak
-|   |   |   |-- bg.pak
-|   |   |   |-- bn.pak
-|   |   |   |-- ca.pak
-|   |   |   |-- cs.pak
-|   |   |   |-- da.pak
-|   |   |   |-- de.pak
-|   |   |   |-- el.pak
-|   |   |   |-- en-GB.pak
-|   |   |   |-- en-US.pak
-|   |   |   |-- es.pak
-|   |   |   |-- es-419.pak
-|   |   |   |-- et.pak
-|   |   |   |-- fa.pak
-|   |   |   |-- fi.pak
-|   |   |   |-- fil.pak
-|   |   |   |-- fr.pak
-|   |   |   |-- gu.pak
-|   |   |   |-- he.pak
-|   |   |   |-- hi.pak
-|   |   |   |-- hr.pak
-|   |   |   |-- hu.pak
-|   |   |   |-- id.pak
-|   |   |   |-- it.pak
-|   |   |   |-- ja.pak
-|   |   |   |-- kn.pak
-|   |   |   |-- ko.pak
-|   |   |   |-- lt.pak
-|   |   |   |-- lv.pak
-|   |   |   |-- ml.pak
-|   |   |   |-- mr.pak
-|   |   |   |-- ms.pak
-|   |   |   |-- nb.pak
-|   |   |   |-- nl.pak
-|   |   |   |-- pl.pak
-|   |   |   |-- pt-BR.pak
-|   |   |   |-- pt-PT.pak
-|   |   |   |-- ro.pak
-|   |   |   |-- ru.pak
-|   |   |   |-- sk.pak
-|   |   |   |-- sl.pak
-|   |   |   |-- sr.pak
-|   |   |   |-- sv.pak
-|   |   |   |-- sw.pak
-|   |   |   |-- ta.pak
-|   |   |   |-- te.pak
-|   |   |   |-- th.pak
-|   |   |   |-- tr.pak
-|   |   |   |-- uk.pak
-|   |   |   |-- ur.pak
-|   |   |   |-- vi.pak
-|   |   |   |-- zh-CN.pak
-|   |   |   +-- zh-TW.pak
-|   |   |-- resources
-|   |   |   |-- app.asar.unpacked
-|   |   |   |-- models
-|   |   |   |   +-- Ai-Maral_en_windows_v3_0_0.ppn
-|   |   |   +-- app.asar
-|   |   |-- chrome_100_percent.pak
-|   |   |-- chrome_200_percent.pak
-|   |   |-- d3dcompiler_47.dll
-|   |   |-- eduassist-windows.exe
-|   |   |-- ffmpeg.dll
-|   |   |-- icudtl.dat
-|   |   |-- libEGL.dll
-|   |   |-- libGLESv2.dll
-|   |   |-- LICENSE.electron.txt
-|   |   |-- LICENSES.chromium.html
-|   |   |-- resources.pak
-|   |   |-- snapshot_blob.bin
-|   |   |-- v8_context_snapshot.bin
-|   |   |-- vk_swiftshader.dll
-|   |   |-- vk_swiftshader_icd.json
-|   |   +-- vulkan-1.dll
-|   |-- builder-debug.yml
-|   |-- builder-effective-config.yaml
-|   +-- eduassist-windows-0.0.0-win.7z
-|-- dist-electron
-|   |-- api
-|   |   |-- handlers
-|   |   |   |-- lesson.handler.js
-|   |   |   |-- lesson-plans.handler.js
-|   |   |   |-- settings.handler.js
-|   |   |   |-- student.handler.js
-|   |   |   |-- teacher.handler.js
-|   |   |   |-- voice.handler.js
-|   |   |   +-- window.handler.js
-|   |   |-- services
-|   |   |   |-- backup.service.js
-|   |   |   |-- config.service.js
-|   |   |   |-- init.service.js
-|   |   |   |-- lesson.service.js
-|   |   |   |-- presentation.service.js
-|   |   |   |-- printer.service.js
-|   |   |   |-- student.service.js
-|   |   |   |-- tasks.service.js
-|   |   |   +-- wakeword.service.js
-|   |   +-- index.js
-|   |-- utils
-|   |   |-- dev-config.js
-|   |   |-- file-utils.js
-|   |   |-- ipc-wrapper.js
-|   |   |-- paths.js
-|   |   |-- resource-path.js
-|   |   +-- validators.js
-|   |-- windows
-|   |   |-- main-window.js
-|   |   +-- settings-window.js
-|   |-- config.js
-|   |-- main.js
-|   |-- preload.cjs
-|   +-- shared-types.js
 |-- dist-react
 |   |-- assets
-|   |   |-- main-SuHJe2D-.js
+|   |   |-- main-CalBdaVg.js
 |   |   |-- main-tn0RQdqM.css
 |   |   |-- settings-D1X-Aq5U.js
 |   |   |-- users-4C8VsMpg.css
 |   |   +-- users-CVn_I7Om.js
-|   |-- models
-|   |   +-- Ai-Maral_en_windows_v3_0_0.ppn
 |   |-- index.html
 |   +-- settings.html
 |-- public
+|-- resources
 |   +-- models
 |       +-- Ai-Maral_en_windows_v3_0_0.ppn
 |-- src
@@ -201,7 +81,6 @@ Generated: 11/14/2025 22:38:51
 |       |-- config
 |       |   +-- voiceConfig.ts
 |       |-- contexts
-|       |   |-- CommandContext.tsx
 |       |   +-- StoreContext.tsx
 |       |-- hooks
 |       |   |-- useCommands.ts
@@ -219,9 +98,8 @@ Generated: 11/14/2025 22:38:51
 |       |   |   |   |-- randomStudent.command.ts
 |       |   |   |   |-- setGrade.command.ts
 |       |   |   |   +-- updateAttendance.command.ts
-|       |   |   |-- FinalCommandDispatcher.ts
+|       |   |   |-- CommandDispatcher.ts
 |       |   |   |-- index.ts
-|       |   |   |-- NewCommandDispatcher.ts
 |       |   |   +-- types.ts
 |       |   |-- dialog
 |       |   |   |-- middlewares
@@ -239,7 +117,6 @@ Generated: 11/14/2025 22:38:51
 |       |   +-- useStore.ts
 |       |-- types
 |       |   |-- global.d.ts
-|       |   |-- index.js
 |       |   +-- index.ts
 |       |-- App.css
 |       |-- App.tsx

@@ -2,7 +2,7 @@
 
 import type { NewCommand, NewCommandResult } from '../NewCommandDispatcher';
 import type { AppStore } from '../../../store';
-import { voiceCommandBus } from '../../CommandEventBus.ts';
+import { commandEventBus } from '../../CommandEventBus.ts';
 import { createBalancedGroups, calculateTargetSizes } from '../definitions/groupFormationAlgorithm';
 
 /**
@@ -83,7 +83,7 @@ export const divideByGroupCountCommand: NewCommand = {
 
 
     // В конце execute метода
-    voiceCommandBus.emit('groups_formed', {
+    commandEventBus.emit('groups_formed', {
       type: 'groups_formed',
       method: 'by_count', // или 'by_count'
       groupSize: groups.map(g => g.length), // для by_size
@@ -186,7 +186,7 @@ export const divideByGroupSizeCommand: NewCommand = {
     console.log('👥 Groups formed by size:', groups.map(g => g.length));
 
     // В конце execute метода
-    voiceCommandBus.emit('groups_formed', {
+    commandEventBus.emit('groups_formed', {
       type: 'groups_formed',
       method: 'by_size', // или 'by_count'
       groupSize: parsedGroupSize, // для by_size

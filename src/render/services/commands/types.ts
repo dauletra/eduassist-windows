@@ -21,15 +21,6 @@ export interface DialogContext {
 export type CommandSource = 'voice' | 'ui' | 'system';
 
 /**
- * Базовый интерфейс команды
- */
-export interface Command {
-  type: string; // 'SetGrade' | 'DivideStudents' | 'RandomStudent' и т.д.
-  params: Record<string, any>; // параметры команды
-  source: CommandSource; // откуда пришла команда
-}
-
-/**
  * События команд - что произошло после выполнения
  */
 export interface CommandEvent {

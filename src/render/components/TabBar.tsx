@@ -6,7 +6,7 @@ import RandomizerTab from "./RandomizerTab";
 import { SeatingChart } from "./SeatingChart.tsx";
 import TasksTab from "./TasksTab";
 import type { LessonFolder } from "../types";
-import { voiceCommandBus } from "../services/CommandEventBus.ts";
+import { commandEventBus } from "../services/CommandEventBus.ts";
 import {useAppState} from "../contexts/StoreContext.tsx";
 
 interface TabBarProps {
@@ -33,7 +33,7 @@ const TabBar = ({ className }: TabBarProps) => {
 
     // Подписаться на все команды
     Object.keys(commandToTab).forEach(commandType => {
-      const unsubscribe = voiceCommandBus.subscribe(commandType, () => {
+      const unsubscribe = commandEventBus.subscribe(commandType, () => {
         const targetTab = commandToTab[commandType];
         console.log(`🔀 Auto-switching to tab: ${targetTab}`);
         setActiveTab(targetTab);

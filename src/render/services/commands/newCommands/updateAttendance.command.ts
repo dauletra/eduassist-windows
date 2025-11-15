@@ -1,15 +1,15 @@
 // src/render/services/commands/newCommands/updateAttendance.command.ts
 
-import type { NewCommand, NewCommandResult } from '../NewCommandDispatcher';
+import type { Command, CommandResultWithState } from '../CommandDispatcher';
 import type { AppStore } from '../../../store';
 
 /**
  * Новая команда обновления посещаемости
  */
-export const updateAttendanceCommand: NewCommand = {
+export const updateAttendanceCommand: Command = {
   type: 'UpdateAttendance',
 
-  async execute(store: AppStore, params: Record<string, any>): Promise<NewCommandResult> {
+  async execute(store: AppStore, params: Record<string, any>): Promise<CommandResultWithState> {
     const { studentId, attendance } = params;
     const state = store.getState();
 

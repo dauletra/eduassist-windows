@@ -5,7 +5,7 @@ import './App.css';
 import TabBar from './components/TabBar';
 import VoiceAssistant from './components/VoiceAssistant';
 import Sidebar from './components/Sidebar';
-import { StoreProvider, useAppState, useAppStore, useCommandDispatcher, useDialogContext } from './contexts/StoreContext';
+import { StoreProvider, useAppState, useAppStore, useCommandDispatcher } from './contexts/StoreContext';
 import { VoiceCommandProcessor } from "./services/dialog/VoiceCommandProcessor";
 import { voiceCommandBus } from "./services/VoiceCommandBus.ts";
 
@@ -22,7 +22,7 @@ const EduAssistContent = () => {
   const state = useAppState();
   const store = useAppStore();
   const commandDispatcher = useCommandDispatcher();
-  const dialogContext = useDialogContext(); // Получаем DialogContext из Store
+  // const dialogContext = useDialogContext(); // Получаем DialogContext из Store
 
   const {
     // classes,
@@ -51,10 +51,10 @@ const EduAssistContent = () => {
   // Инициализация VoiceCommandProcessor
   useEffect(() => {
     if (commandDispatcher && !voiceProcessorRef.current) {
-      voiceProcessorRef.current = new VoiceCommandProcessor(commandDispatcher);
+      voiceProcessorRef.current = new VoiceCommandProcessor(commandDispatcher, store);
       console.log('✅ VoiceCommandProcessor initialized');
     }
-  }, [commandDispatcher]);
+  }, [commandDispatcher, store]);
 
   // Подписка на голосовые команды через шину
   useEffect(() => {
@@ -73,7 +73,7 @@ const EduAssistContent = () => {
 
       // Используем DialogContext из StoreContext
       voiceProcessorRef.current
-        .process(command.cluResponse, command.text, dialogContext)
+        .process(command.cluResponse, command.text)
         .then(result => {
           console.log('🎯 VoiceCommandProcessor result:', result);
         })
@@ -87,7 +87,7 @@ const EduAssistContent = () => {
     return () => {
       voiceCommandBus.unsubscribe('command-recognized', handleVoiceCommand);
     };
-  }, [dialogContext]); // Зависимость от dialogContext
+  }, []);
 
   // Загрузка данных при монтировании
   useEffect(() => {

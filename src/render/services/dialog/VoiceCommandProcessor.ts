@@ -3,8 +3,10 @@
 import type { CLUResponse } from '../CLUService';
 import { DialogState } from './DialogState';
 // import { SlotFiller } from './SlotFiller';
-import type { DialogContext } from '../commands';
-import type { FinalCommandDispatcher } from '../commands'; // ИЗМЕНЕНО
+// import type { DialogContext } from '../commands';
+import type { CommandDispatcher } from '../commands';
+import {AppStore} from "../../store";
+import {SlotFiller} from "./SlotFiller.ts"; // ИЗМЕНЕНО
 
 export interface DialogResult {
   success: boolean;
@@ -15,21 +17,23 @@ export interface DialogResult {
 }
 
 export class VoiceCommandProcessor {
+  private store: AppStore;
   private state: DialogState;
-  // private slotFiller: SlotFiller;
-  private commandDispatcher: FinalCommandDispatcher; // ИЗМЕНЕНО
+  private slotFiller: SlotFiller;
+  private commandDispatcher: CommandDispatcher; // ИЗМЕНЕНО
 
-  constructor(commandDispatcher: FinalCommandDispatcher) { // ИЗМЕНЕНО
+  constructor(commandDispatcher: CommandDispatcher, store: AppStore) { // ИЗМЕНЕНО
     this.state = new DialogState();
-    // this.slotFiller = new SlotFiller();
     this.commandDispatcher = commandDispatcher;
+    this.store = store;
+    this.slotFiller = new SlotFiller(store);
   }
 
   async process(
     cluResponse: CLUResponse,
     userText: string,
-    context: DialogContext
   ): Promise<DialogResult> {
+    const context = this.store.getDialogContext()
     console.group('🎯 VoiceCommandProcessor.process()');
     console.log('User:', userText);
     console.log('Intent:', cluResponse.topIntent);
@@ -45,43 +49,27 @@ export class VoiceCommandProcessor {
 
     const intentName = cluResponse.topIntent;
 
-    // Проверить, существует ли команда
-    if (!this.commandDispatcher.hasCommand(intentName)) {
-      console.log('❌ Unknown intent:', intentName);
-      console.groupEnd();
-      return {
-        success: false,
-        message: `Команда "${intentName}" не поддерживается`
-      };
-    }
-
-    // Получить определение команды из SlotFiller (нужно обновить SlotFiller)
-    // Временно используем базовую проверку контекста
-    const hasContext = !!(context.classId && context.groupId);
-
-    if (intentName !== 'OpenJournal' && !hasContext) {
-      console.log('⚠️ Context required but not available');
-      console.groupEnd();
-      return {
-        success: false,
-        needsClarification: true,
-        clarificationQuestion: 'Сначала откройте журнал',
-        message: 'Необходимо открыть журнал'
-      };
-    }
-
     // Упрощенная обработка - напрямую выполняем команду
-    // TODO: Обновить SlotFiller для работы с новой системой
     try {
-      console.log('✅ Executing command via FinalCommandDispatcher...');
+      console.log('✅ Executing command via CommandDispatcher...');
 
       // Преобразуем entities в параметры
-      const params: Record<string, any> = {};
-      cluResponse.entities.forEach(entity => {
-        const extraInfo = entity.extraInformation as any;
-        const value = extraInfo?.listKey ?? entity.text;
-        params[entity.category] = value;
-      });
+      const params = this.slotFiller.fillSlotsFromCLU(cluResponse, context);
+      console.log('Normalized params:', params);
+
+      // Валидация параметров
+      const validation = this.slotFiller.validateParams(intentName, params, context);
+      if (!validation.isValid) {
+        console.log('❌ Validation failed:', validation.message);
+        this.state.setActiveIntent(intentName, params);
+        console.groupEnd();
+        return {
+          success: false,
+          needsClarification: true,
+          clarificationQuestion: validation.message,
+          message: validation.message || 'Недостаточно параметров'
+        };
+      }
 
       const result = await this.commandDispatcher.executeFromVoice(intentName, params);
 

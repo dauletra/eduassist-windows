@@ -1,16 +1,16 @@
 // src/render/services/commands/newCommands/openJournal.command.ts
 
-import type { NewCommand, NewCommandResult } from '../NewCommandDispatcher';
+import type { Command, CommandResultWithState } from '../CommandDispatcher';
 import type { AppStore } from '../../../store';
 
 /**
  * Новая команда открытия журнала
  */
 
-export const openJournalCommand: NewCommand = {
+export const openJournalCommand: Command = {
   type: 'OpenJournal',
 
-  async execute(_store: AppStore, params: Record<string, any>): Promise<NewCommandResult> {
+  async execute(_store: AppStore, params: Record<string, any>): Promise<CommandResultWithState> {
     if (params.groupId) {
       const groupId = String(params.groupId).trim();
       const groupParts = groupId.split('-');

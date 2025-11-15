@@ -6,7 +6,7 @@ import { GroupCard } from './GroupCard';
 import { RandomizerSettings } from './RandomizerSettings';
 import { useAppState } from '../../contexts/StoreContext';
 import { useCommands } from "../../hooks/useCommands.ts";
-import { voiceCommandBus } from "../../services/CommandEventBus.ts";
+import { commandEventBus } from "../../services/CommandEventBus.ts";
 
 const GRID_COLS_MAP = {
   3: 'grid-cols-3',
@@ -213,7 +213,7 @@ const RandomizerTab = () => {
   }, [hasGroups, randomGroups.length]);
 
   useEffect(() => {
-    const unsubscribeRandom = voiceCommandBus.subscribe('random_student_selected', (data) => {
+    const unsubscribeRandom = commandEventBus.subscribe('random_student_selected', (data) => {
       console.log('🎲 random_student_selected event:', data);
       if (data?.studentName) {
         setSelectedStudent(data.studentName);
@@ -228,7 +228,7 @@ const RandomizerTab = () => {
       }
     });
 
-    const unsubscribeGroups = voiceCommandBus.subscribe('groups_formed', (data: any) => {
+    const unsubscribeGroups = commandEventBus.subscribe('groups_formed', (data: any) => {
       console.log('👥 groups_formed event received:', data);
 
       // ✅ Обрабатываем данные из вашего JSON

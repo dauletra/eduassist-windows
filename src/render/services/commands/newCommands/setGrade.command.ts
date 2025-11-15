@@ -1,15 +1,15 @@
 // src/render/services/commands/newCommands/setGrade.command.ts
 
-import type { NewCommand, NewCommandResult } from '../NewCommandDispatcher';
+import type { Command, CommandResultWithState } from '../CommandDispatcher';
 import type { AppStore } from '../../../store';
 
 /**
  * Новая команда постановки оценки - работает напрямую со Store
  */
-export const setGradeCommand: NewCommand = {
+export const setGradeCommand: Command = {
   type: 'SetGrade',
 
-  async execute(store: AppStore, params: Record<string, any>): Promise<NewCommandResult> {
+  async execute(store: AppStore, params: Record<string, any>): Promise<CommandResultWithState> {
     const StudentName = params.StudentName || params.studentName;
     const NumberValue = params.NumberValue || params.numberValue;
     const state = store.getState();
@@ -17,7 +17,7 @@ export const setGradeCommand: NewCommand = {
     if (!state.currentLesson) {
       return {
         success: false,
-        message: 'Сначала откройте журнал'
+        message: 'Нет активного урока'
       };
     }
 

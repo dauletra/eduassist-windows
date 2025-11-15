@@ -1,15 +1,15 @@
 // src/render/services/commands/newCommands/loadData.command.ts
 
-import type { NewCommand, NewCommandResult } from '../NewCommandDispatcher';
+import type { Command, CommandResultWithState } from '../CommandDispatcher';
 import type { AppStore } from '../../../store';
 
 /**
  * Новая команда загрузки данных классов
  */
-export const loadDataCommand: NewCommand = {
+export const loadDataCommand: Command = {
   type: 'LoadData',
 
-  async execute(store: AppStore, _params: Record<string, any>): Promise<NewCommandResult> {
+  async execute(store: AppStore, _params: Record<string, any>): Promise<CommandResultWithState> {
     try {
       store.setState(prev => ({ ...prev, loading: true, error: null }));
 

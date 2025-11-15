@@ -2,8 +2,7 @@
 
 // Экспортируем только новую систему
 export * from './types';
-export * from './NewCommandDispatcher';
-export * from './FinalCommandDispatcher'; // Основной экспорт
+export * from './CommandDispatcher'; // Основной экспорт
 export * from './newCommands'; // Все команды
 
 // Убраны экспорты старой системы:

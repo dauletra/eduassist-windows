@@ -1,3 +1,5 @@
+// src/render/services/CommandEventBus.ts
+
 type VoiceCommandHandler = (data: any) => void;
 
 class CommandEventBus {
@@ -45,6 +47,3 @@ class CommandEventBus {
 
 // Singleton instance
 export const commandEventBus = new CommandEventBus();
-
-// Для обратной совместимости (временно)
-export const voiceCommandBus = commandEventBus;

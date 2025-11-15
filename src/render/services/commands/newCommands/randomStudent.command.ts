@@ -1,16 +1,16 @@
 // src/render/services/commands/newCommands/randomStudent.command.ts
 
-import type { NewCommand, NewCommandResult } from '../NewCommandDispatcher';
+import type { Command, CommandResultWithState } from '../CommandDispatcher';
 import type { AppStore } from '../../../store';
-import { voiceCommandBus } from '../../../services/CommandEventBus';
+import { commandEventBus } from '../../CommandEventBus.ts';
 
 /**
  * Новая команда случайного выбора ученика
  */
-export const randomStudentCommand: NewCommand = {
+export const randomStudentCommand: Command = {
   type: 'RandomStudent',
 
-  async execute(store: AppStore, params: Record<string, any>): Promise<NewCommandResult> {
+  async execute(store: AppStore, params: Record<string, any>): Promise<CommandResultWithState> {
     const { onlyPresent = true } = params;
     const state = store.getState();
 
@@ -51,7 +51,7 @@ export const randomStudentCommand: NewCommand = {
     console.log(`🎲 Random student selected: ${selectedStudent.name} (${selectedStudent.id})`);
 
     // ИЗМЕНЕНО: Публикуем событие для UI
-    voiceCommandBus.emit('random_student_selected', {
+    commandEventBus.emit('random_student_selected', {
       studentId: selectedStudent.id,
       studentName: selectedStudent.name,
       totalCandidates: candidateStudents.length

@@ -1,5 +1,8 @@
 $ExcludedFolders = @(
     "node_modules",
+    "dist-render",
+    "dist-electron",
+    "dist",
     ".git",
     ".idea"
 )
