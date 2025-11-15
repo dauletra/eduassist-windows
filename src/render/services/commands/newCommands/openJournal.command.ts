@@ -1,149 +1,31 @@
 // src/render/services/commands/newCommands/openJournal.command.ts
-
-import type { Command, CommandResultWithState } from '../CommandDispatcher';
+import type { Command } from '../CommandDispatcher';
 import type { AppStore } from '../../../store';
-
-/**
- * Новая команда открытия журнала
- */
+import { JournalService } from '../../domain/JournalService';
 
 export const openJournalCommand: Command = {
   type: 'OpenJournal',
+  async execute(store: AppStore, params: Record<string, any>) {
+    const svc = new JournalService(store);
+    const groupId = params.groupId ? String(params.groupId).trim() : undefined;
 
-  async execute(_store: AppStore, params: Record<string, any>): Promise<CommandResultWithState> {
-    if (params.groupId) {
-      const groupId = String(params.groupId).trim();
-      const groupParts = groupId.split('-');
-      if (groupParts.length === 2) {
-        const classPart = groupParts[0];
+    if (groupId) {
+      const parts = groupId.split('-');
+      if (parts.length === 2) {
+        const classPart = parts[0];
         params.classNumber = classPart.match(/\d+/)?.[0];
         params.classLetter = classPart.match(/[a-zA-Zа-яА-ЯәӘ]/)?.[0]?.toLowerCase() || '';
-        params.groupNumber = groupParts[1];
+        params.groupNumber = parts[1];
       }
     }
 
     const classNumber = String(params.classNumber || '').trim();
-    let classLetter = String(params.classLetter || '').trim().toLowerCase();
+    const classLetter = String(params.classLetter || '').trim().toLowerCase();
     const groupNumber = String(params.groupNumber || '').trim();
 
-    console.log(`🎯 Executing OpenJournal: ${classNumber}${classLetter} группа ${groupNumber}`);
+    if (!classNumber) return { success: false, message: 'Не указан номер класса' };
+    if (!groupNumber) return { success: false, message: 'Не указан номер группы' };
 
-    // Валидация обязательных параметров
-    if (!classNumber) {
-      return {
-        success: false,
-        message: 'Не указан номер класса'
-      };
-    }
-
-    if (!groupNumber) {
-      return {
-        success: false,
-        message: 'Не указан номер группы'
-      };
-    }
-
-    // Конвертируем русские буквы классов в латинские
-    const russianToLatin: Record<string, string> = {
-      'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
-      'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z', 'и': 'i',
-      'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n',
-      'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't',
-      'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch',
-      'ш': 'sh', 'щ': 'sch', 'ы': 'y', 'э': 'e', 'ю': 'yu',
-      'я': 'ya'
-    };
-
-    // Конвертируем букву класса
-    if (classLetter) {
-      classLetter = russianToLatin[classLetter] || classLetter;
-    }
-
-    // Формируем идентификаторы
-    const classId = `${classNumber}${classLetter}`;
-    const groupId = `${classNumber}${classLetter}-${groupNumber}`;
-
-    console.log(`📝 Generated IDs: classId="${classId}", groupId="${groupId}"`);
-
-    try {
-      // Сначала проверяем существование группы через loadStudentsList
-      console.log('🔍 Checking group existence...');
-      const allStudents = await window.electronAPI.loadStudentsList();
-      const targetClass = allStudents.find((c: { id: string; }) => c.id === classId);
-
-      if (!targetClass) {
-        console.error(`❌ Class not found: ${classId}`);
-        return {
-          success: false,
-          message: `Класс ${classNumber}${classLetter} не найден. Доступные классы: ${allStudents.map((c: { id: any; }) => c.id).join(', ')}`
-        };
-      }
-
-      const targetGroup = targetClass.groups.find((g: { id: string; }) => g.id === groupId);
-
-      if (!targetGroup) {
-        console.error(`❌ Group not found: ${groupId}`);
-        console.log('📋 Available groups:', targetClass.groups.map((g: { id: any; }) => g.id));
-        return {
-          success: false,
-          message: `Группа ${classNumber}${classLetter}-${groupNumber} не найдена. Доступные группы: ${targetClass.groups.map((g: { id: string; }) => g.id.split('-')[1]).join(', ')}`
-        };
-      }
-
-      console.log(`✅ Group found: ${targetGroup.name}`);
-
-      // Загружаем уроки группы
-      let groupLessons = await window.electronAPI.getAllLessons(classId, groupId);
-
-      // Пытаемся найти урок на сегодня
-      let todayLesson = await window.electronAPI.getTodayLesson(classId, groupId);
-
-      // Если нет - создаем
-      if (!todayLesson) {
-        console.log('📝 Creating today lesson...');
-        todayLesson = await window.electronAPI.createLesson(
-          classId,
-          groupId,
-          'Урок физики. Тема'
-        );
-
-        // ОБНОВЛЯЕМ СПИСОК УРОКОВ ПОСЛЕ СОЗДАНИЯ НОВОГО
-        const updatedGroupLessons = await window.electronAPI.getAllLessons(classId, groupId);
-        groupLessons = updatedGroupLessons;
-      }
-
-      const displayName = classLetter
-        ? `${classNumber}${classLetter} ${groupNumber} группа`
-        : `${classNumber} класс ${groupNumber} группа`;
-
-      return {
-        success: true,
-        message: `Журнал ${displayName} открыт`,
-        newState: {
-          currentClassId: classId,
-          currentGroupId: groupId,
-          currentLessonId: todayLesson.id,
-          lessons: groupLessons,
-          loading: false
-        }
-      };
-
-    } catch (error) {
-      console.error('❌ Failed to open journal:', error);
-
-      let errorMessage = 'Не удалось открыть журнал';
-      if (error instanceof Error) {
-        if (error.message.includes('Группа не найдена')) {
-          errorMessage = `Группа ${classNumber}${classLetter}-${groupNumber} не существует. Проверьте правильность введенных данных.`;
-        } else {
-          errorMessage = error.message;
-        }
-      }
-
-      return {
-        success: false,
-        message: errorMessage
-      };
-    }
+    return svc.openJournal(classNumber, classLetter, groupNumber);
   }
 };

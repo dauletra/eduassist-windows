@@ -1,3 +1,4 @@
+// src/render/services/commands/types.ts
 import type { EnrichedLesson } from '../../types';
 
 /**

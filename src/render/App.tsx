@@ -18,35 +18,17 @@ const EduAssist = () => {
 };
 
 const EduAssistContent = () => {
-  // Используем единый StoreContext вместо множества контекстов
   const state = useAppState();
   const store = useAppStore();
   const commandDispatcher = useCommandDispatcher();
-  // const dialogContext = useDialogContext(); // Получаем DialogContext из Store
 
   const {
-    // classes,
-    currentLesson,
+    // currentLesson,
     currentGroup,
-    // currentClass,
-    // loading,
     error,
-    // groupLessons
   } = state;
 
   const voiceProcessorRef = useRef<VoiceCommandProcessor | null>(null);
-
-  // Формируем selectedGroup для совместимости с существующими компонентами
-  // const selectedGroup = useMemo((): SelectedGroup | null => {
-  //   if (!currentClass || !currentGroup) return null;
-  //
-  //   return {
-  //     classId: currentClass.id,
-  //     className: currentClass.name,
-  //     groupId: currentGroup.id,
-  //     groupName: currentGroup.name,
-  //   };
-  // }, [currentClass, currentGroup]);
 
   // Инициализация VoiceCommandProcessor
   useEffect(() => {
@@ -71,7 +53,6 @@ const EduAssistContent = () => {
 
       console.log('🎤 Voice command received from bus:', command);
 
-      // Используем DialogContext из StoreContext
       voiceProcessorRef.current
         .process(command.cluResponse, command.text)
         .then(result => {
@@ -109,86 +90,6 @@ const EduAssistContent = () => {
     };
   }, [commandDispatcher]);
 
-  // Обработчик выбора группы
-  const handleGroupSelect = async (groupId: string) => {
-    console.log('➡️ Group selected:', groupId);
-    await commandDispatcher.executeFromUI('OpenJournal', { groupId });
-  };
-
-  // Обработчик возврата к выбору групп
-  const handleBackToGroups = async () => {
-    await commandDispatcher.executeFromUI('CloseJournal', {});
-  };
-
-  // Обработчик выбора урока
-  const selectLesson = (lessonId: string) => {
-    store.setState(prev => ({
-      ...prev,
-      currentLessonId: lessonId
-    }));
-  };
-
-  // Обработчик обновления оценки
-  const handleUpdateGrade = async (studentId: string, grade: number | null) => {
-    if (!currentLesson) {
-      console.warn('⚠️ No lesson selected');
-      return;
-    }
-
-    await commandDispatcher.executeFromUI('SetGrade', {
-      studentName: studentId,
-      numberValue: grade
-    });
-  };
-
-  // Обработчик обновления посещаемости
-  const handleUpdateAttendance = async (studentId: string, attendance: boolean) => {
-    if (!currentLesson) {
-      console.warn('⚠️ No lesson selected');
-      return;
-    }
-
-    await commandDispatcher.executeFromUI('UpdateAttendance', {
-      studentId,
-      attendance
-    });
-  };
-
-  // // Обработчик случайного выбора ученика
-  // const handleRandomStudent = async (onlyPresent: boolean = true) => {
-  //   const result = await commandDispatcher.executeFromUI('RandomStudent', {
-  //     onlyPresent
-  //   });
-  //
-  //   if (result.success && result.data?.studentId) {
-  //     console.log(`🎯 Highlight student: ${result.data.studentName}`);
-  //   }
-  // };
-  //
-  // // // Обработчик деления на группы по количеству
-  // // const handleDivideByGroupCount = async (groupCount: number, onlyPresent: boolean = true) => {
-  // //   const result = await commandDispatcher.executeFromUI('DivideByGroupCount', {
-  // //     numberValue: groupCount,
-  // //     onlyPresent
-  // //   });
-  // //
-  // //   if (result.success && result.data) {
-  // //     console.log('✅ Groups formed by count:', result.data.groups);
-  // //   }
-  // // };
-  // //
-  // // // Обработчик деления на группы по размеру
-  // // const handleDivideByGroupSize = async (groupSize: number, onlyPresent: boolean = true) => {
-  // //   const result = await commandDispatcher.executeFromUI('DivideByGroupSize', {
-  // //     numberValue: groupSize,
-  // //     onlyPresent
-  // //   });
-  // //
-  // //   if (result.success && result.data) {
-  // //     console.log('✅ Groups formed by size:', result.data.groups);
-  // //   }
-  // // };
-
   // Получить имя ученика
   const getStudentName = (studentId: string): string => {
     if (!currentGroup) return studentId;
@@ -199,11 +100,6 @@ const EduAssistContent = () => {
   // Очистить ошибку
   const clearError = () => {
     store.setState(prev => ({ ...prev, error: null }));
-  };
-
-  // Перезагрузка данных
-  const reloadData = async () => {
-    await commandDispatcher.executeFromSystem('LoadData', {});
   };
 
   return (
@@ -231,12 +127,11 @@ const EduAssistContent = () => {
       <div className="w-80 bg-white border-r flex flex-col min-h-0">
         <Sidebar
           getStudentName={getStudentName}
-          onGroupSelect={handleGroupSelect}
-          onBackToGroups={handleBackToGroups}
-          onLessonChange={selectLesson}
-          onUpdateGrade={handleUpdateGrade}
-          onUpdateAttendance={handleUpdateAttendance}
-          onSettingsUpdate={reloadData}
+          onGroupSelect={(groupId) => commandDispatcher.executeFromUI('OpenJournal', { groupId })}
+          onBackToGroups={() => commandDispatcher.executeFromUI('CloseJournal', {})}
+          onLessonChange={(lessonId) => commandDispatcher.executeFromUI('SelectLesson', { lessonId })}
+          onUpdateGrade={(studentId, grade) => commandDispatcher.executeFromUI('SetGrade', { studentName: studentId, numberValue: grade })}
+          onUpdateAttendance={(studentId, attendance) => commandDispatcher.executeFromUI('UpdateAttendance', { studentId, attendance })}
         />
       </div>
 

@@ -1,5 +1,5 @@
 ﻿Project structure (excluded: node_modules, dist-render, dist-electron, dist, .git, .idea)
-Generated: 11/15/2025 15:06:36
+Generated: 11/15/2025 18:04:13
 
 .
 |-- dist-react
@@ -106,6 +106,15 @@ Generated: 11/15/2025 15:06:36
 |       |   |   |-- DialogState.ts
 |       |   |   |-- SlotFiller.ts
 |       |   |   +-- VoiceCommandProcessor.ts
+|       |   |-- domain
+|       |   |   |-- AttendanceService.ts
+|       |   |   |-- ElectronAdapter.ts
+|       |   |   |-- FileService.ts
+|       |   |   |-- GradeService.ts
+|       |   |   |-- GroupService.ts
+|       |   |   |-- JournalService.ts
+|       |   |   |-- MessagingService.ts
+|       |   |   +-- StudentService.ts
 |       |   |-- AudioService.ts
 |       |   |-- CLUService.ts
 |       |   |-- CommandEventBus.ts
@@ -129,7 +138,9 @@ Generated: 11/15/2025 15:06:36
 |-- desktopIcon.png
 |-- electron-builder.json
 |-- eslint.config.js
+|-- fixJournal.js
 |-- index.html
+|-- migrate.js
 |-- package.json
 |-- package-lock.json
 |-- README.md

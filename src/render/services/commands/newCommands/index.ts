@@ -7,6 +7,8 @@ import { closeJournalCommand } from './closeJournal.command'; // ДОБАВИТ�
 import { updateAttendanceCommand } from './updateAttendance.command'; // ДОБАВИТЬ
 import { divideByGroupCountCommand, divideByGroupSizeCommand } from './divideStudents.command'; // ДОБАВИТЬ
 import { loadDataCommand } from './loadData.command'; // ДОБАВИТЬ
+import { selectLessonCommand } from './selectLesson.command';
+import { openSettingsCommand } from './openSettings.command';
 
 /**
  * Все новые команды для регистрации
@@ -20,8 +22,10 @@ export const allNewCommands = [
   updateAttendanceCommand, // ДОБАВИТЬ
   divideByGroupCountCommand, // ДОБАВИТЬ
   divideByGroupSizeCommand, // ДОБАВИТЬ
+  selectLessonCommand,
+  openSettingsCommand,
 ];
 
 // Re-export для удобства
 export { loadDataCommand, setGradeCommand, randomStudentCommand, openJournalCommand, closeJournalCommand,
-  divideByGroupCountCommand, divideByGroupSizeCommand };
+  divideByGroupCountCommand, divideByGroupSizeCommand, openSettingsCommand };

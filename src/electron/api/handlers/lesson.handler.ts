@@ -6,6 +6,10 @@ import { lessonService } from '../services/lesson.service.js';
  * Регистрация обработчиков уроков
  */
 export function registerLessonHandlers(): void {
+  // ✅ ДОБАВЛЕНО: Загрузить весь журнал (все уроки)
+  ipcMain.handle('load-journal', async (): Promise<Lesson[]> => {
+    return lessonService.getAllLessons();
+  });
 
   // Получить урок на сегодня
   ipcMain.handle('get-today-lesson', async (_event, classId: string, groupId: string): Promise<Lesson | null> => {
@@ -47,7 +51,7 @@ export function registerLessonHandlers(): void {
     return result;
   });
 
-  ipcMain.handle('get-all-lessons', async (_event, classId: string, groupId: string): Promise<Lesson[]> => {
+  ipcMain.handle('get-lessons-by-group', async (_event, classId: string, groupId: string): Promise<Lesson[]> => {
     const lessons = lessonService.getLessonsByGroup(classId, groupId);
     return lessons.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   })

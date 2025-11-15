@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useCommands } from '../hooks/useCommands';
 import { ChevronLeft, ChevronRight, MoreHorizontal, MessageSquare, UserX } from 'lucide-react';
 import type {SelectedGroup, EnrichedLesson } from '../types';
+import type {CommandResult} from "../services/commands";
 
 interface StudentJournalProps {
   selectedGroup: SelectedGroup;
@@ -11,8 +12,8 @@ interface StudentJournalProps {
   getStudentName: (studentId: string) => string;
   onBack: () => void;
   onLessonChange: (lesson: string) => void;
-  onUpdateGrade: (studentId: string, grade: number | null) => Promise<void>;
-  onUpdateAttendance: (studentId: string, attendance: boolean) => Promise<void>;
+  onUpdateGrade: (studentId: string, grade: number | null) => Promise<CommandResult>;
+  onUpdateAttendance: (studentId: string, attendance: boolean) => Promise<CommandResult>;
 }
 
 const StudentJournal = ({ 

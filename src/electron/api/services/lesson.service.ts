@@ -176,6 +176,13 @@ export class LessonService {
     const journal = this.loadJournal();
     return journal.filter(l => l.classId === classId && l.groupId === groupId);
   }
+
+  /**
+   * Получить ВСЕ уроки (весь журнал)
+   */
+  getAllLessons(): Lesson[] {
+    return this.loadJournal();
+  }
 }
 
 export const lessonService = new LessonService();

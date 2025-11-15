@@ -1,8 +1,9 @@
 import { Settings as SettingsIcon } from 'lucide-react';
 import GroupSelector from './GroupSelector';
 import StudentJournal from './StudentJournal';
-import { useAppState } from '../contexts/StoreContext';
+import { useAppState, useCommandDispatcher } from '../contexts/StoreContext';
 import type { SelectedGroup } from '../types';
+import type {CommandResult} from "../services/commands";
 
 
 interface SidebarProps {
@@ -10,9 +11,8 @@ interface SidebarProps {
   onGroupSelect: (groupId: string) => void;
   onBackToGroups: () => void;
   onLessonChange: (lesson: string) => void;
-  onUpdateGrade: (studentId: string, grade: number | null) => Promise<void>;
-  onUpdateAttendance: (studentId: string, attendance: boolean) => Promise<void>;
-  onSettingsUpdate: () => Promise<void>;
+  onUpdateGrade: (studentId: string, grade: number | null) => Promise<CommandResult>;
+  onUpdateAttendance: (studentId: string, attendance: boolean) => Promise<CommandResult>;
 }
 
 const Sidebar = ({
@@ -25,6 +25,8 @@ const Sidebar = ({
                  }: SidebarProps) => {
   // Используем состояние из контекста
   const state = useAppState();
+  const commandDispatcher = useCommandDispatcher();
+
   const {
     classes,
     currentLesson,
@@ -43,11 +45,7 @@ const Sidebar = ({
   } : null;
 
   const handleOpenSettings = async () => {
-    try {
-      await window.electronAPI.openSettingsWindow();
-    } catch (error) {
-      console.error('Ошибка открытия окна настроек:', error);
-    }
+    await commandDispatcher.executeFromUI('OpenSettings', {});
   }
 
   return (

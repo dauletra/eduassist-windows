@@ -4,8 +4,8 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Users, Shuffle } from 'lucide-react';
 import { GroupCard } from './GroupCard';
 import { RandomizerSettings } from './RandomizerSettings';
-import { useAppState } from '../../contexts/StoreContext';
-import { useCommands } from "../../hooks/useCommands.ts";
+import { useAppState, useCommandDispatcher } from '../../contexts/StoreContext';
+// import { useCommands } from "../../hooks/useCommands.ts";
 import { commandEventBus } from "../../services/CommandEventBus.ts";
 
 const GRID_COLS_MAP = {
@@ -25,7 +25,7 @@ const getGridColumnsClass = (groupCount: number): string => {
 const RandomizerTab = () => {
   const state = useAppState();
   const { selectedGroup, currentLesson, currentGroup } = state;
-  const commands = useCommands();
+  const commandDispatcher = useCommandDispatcher();
 
   // ТОЛЬКО UI состояние
   const [groupCount, setGroupCount] = useState(3);
@@ -118,14 +118,16 @@ const RandomizerTab = () => {
     console.log('🖱️ UI: Random student button clicked');
     setIsRandomizing(true);
 
-    const result = await commands.randomStudent(!includeAbsent);
+    const result = await commandDispatcher.executeFromUI('RandomStudent', {
+      onlyPresent: !includeAbsent
+    });
 
     if (!result.success) {
       console.error('❌ Random student failed:', result.message);
     }
 
     setIsRandomizing(false);
-  }, [commands, includeAbsent]);
+  }, [commandDispatcher, includeAbsent]);
 
   const handleDivideGroupsClick = useCallback(async () => {
     console.log('🖱️ UI: Divide groups button clicked');
@@ -135,9 +137,15 @@ const RandomizerTab = () => {
     try {
       let result;
       if (divisionMode === 'groups') {
-        result = await commands.divideByGroupCount(groupCount, !includeAbsent);
+        result = await commandDispatcher.executeFromUI('DivideByGroupCount', {
+          numberValue: groupCount,
+          onlyPresent: !includeAbsent
+        });
       } else {
-        result = await commands.divideByGroupSize(peoplePerGroup, !includeAbsent);
+        result = await commandDispatcher.executeFromUI('DivideByGroupSize', {
+          numberValue: peoplePerGroup,
+          onlyPresent: !includeAbsent
+        });
       }
 
       // ✅ ВРУЧНУЮ обновляем состояние после успешного выполнения команды
@@ -173,7 +181,7 @@ const RandomizerTab = () => {
     } finally {
       setIsFormingGroups(false);
     }
-  }, [commands, divisionMode, groupCount, peoplePerGroup, includeAbsent]);
+  }, [commandDispatcher, divisionMode, groupCount, peoplePerGroup, includeAbsent]);
 
   // Простая анимация выбора внутри группы
   const randomizeStudent = useCallback(async (groupIndex: number) => {

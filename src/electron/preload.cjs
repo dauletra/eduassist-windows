@@ -13,7 +13,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Методы для работы с уроками
     loadStudentsList: () => ipcRenderer.invoke('load-students-list'),
     getTodayLesson: (classId, groupId) => ipcRenderer.invoke('get-today-lesson', classId, groupId),
-    getAllLessons: (classId, groupId) => ipcRenderer.invoke('get-all-lessons', classId, groupId),
+    getAllLessons: () => ipcRenderer.invoke('get-all-lessons', classId, groupId),
+    getLessonsByGroup: (classId, groupId) => ipcRenderer.invoke('get-lessons-by-group', classId, groupId),
     createLesson: (classId, groupId, topic) => ipcRenderer.invoke('create-lesson', classId, groupId, topic),
     updateAttendance: (lessonId, studentId, attendance) => ipcRenderer.invoke('update-attendance', lessonId, studentId, attendance),
     updateGrade: (lessonId, studentId, grade) => ipcRenderer.invoke('update-grade', lessonId, studentId, grade),
