@@ -30,7 +30,7 @@ function writeLog(message: string) {
 function resolveKeywordPath(): string {
   const base = app.isPackaged
     ? path.join(process.resourcesPath, "models")
-    : path.join(process.cwd(), "public", "models");
+    : path.join(process.cwd(), "resources", "models");
   return path.join(base, "Ai-Maral_en_windows_v3_0_0.ppn");
 }
 

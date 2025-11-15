@@ -10,7 +10,7 @@ import { isDev } from './dev-config.js';
 export function getResourcePath(): string {
   if (isDev()) {
     // В development - из папки public/resources
-    return path.join(process.cwd(), 'public', 'resources');
+    return path.join(process.cwd(), 'resources', 'models');
   } else {
     // В production - из папки resources рядом с исполняемым файлом
     return path.join(path.dirname(app.getPath('exe')), 'resources');
