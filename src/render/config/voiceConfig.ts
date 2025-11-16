@@ -25,10 +25,10 @@ export const VOICE_CONFIG = {
       tts: '/v1/speech/tts',
       clu: '/v1/clu/predict'
     },
-    language: 'ru-RU',
+    language: 'kk-KZ',
     clu: {
-      projectName: 'RussianEduAssistCLU', // Использовать default из .env сервера
-      deploymentName: 'FiveIntenst-phrase-deployment' // Использовать default из .env сервера
+      projectName: 'KazakhConversationTeacher', // Использовать default из .env сервера
+      deploymentName: 'kazakh-clu-three' // Использовать default из .env сервера
     }
   },
 

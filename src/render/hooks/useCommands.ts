@@ -16,7 +16,7 @@ export function useCommands() {
    * Поставить оценку ученику
    */
   const setGrade = useCallback(
-    async (studentId: string, grade: number) => {
+    async (studentId: string, grade: number | null) => {
       return commandDispatcher.executeFromUI( // ИЗМЕНЕНО
         'SetGrade',
         { studentName: studentId, numberValue: grade }

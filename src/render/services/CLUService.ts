@@ -84,7 +84,7 @@ export class CLUService {
       console.log('✅ CLU Response received successfully');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('🎯 INTENT:', result.topIntent);
-      // console.log('📊 Confidence:', (result.intents[0]?.confidenceScore * 100).toFixed(1) + '%');
+      console.log('📊 Confidence:', (result.intents[0]?.confidenceScore * 100).toFixed(1) + '%');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       if (result.entities.length > 0) {

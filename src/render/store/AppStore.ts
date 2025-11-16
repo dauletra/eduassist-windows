@@ -1,6 +1,6 @@
 // src/render/store/AppStore.ts
 
-import type { Class, EnrichedLesson, SelectedGroup, Group } from '../types';
+import type {Class, EnrichedLesson, SelectedGroup, Group, FileItem} from '../types';
 import type { DialogContext } from '../services/commands';
 
 /**
@@ -17,6 +17,8 @@ export interface AppState {
   currentClassId: string | null;
   currentGroupId: string | null;
   currentLessonId: string | null;
+
+  lessonFiles: FileItem[];
 
   // Вычисляемые данные (кешируются)
   currentClass: Class | null;
@@ -59,6 +61,8 @@ export class AppStore {
       currentClassId: null,
       currentGroupId: null,
       currentLessonId: null,
+
+      lessonFiles: [],
 
       currentClass: null,
       currentGroup: null, // ИЗМЕНЕНО: только null

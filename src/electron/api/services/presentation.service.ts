@@ -3,58 +3,143 @@
 import { shell, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { spawn, ChildProcess } from 'child_process';
 import type { PresentationConfig } from '../../shared-types.js';
 
+interface OpenedFile {
+  filePath: string;
+  fileType: 'presentation' | 'video';
+  process: ChildProcess;
+  pid: number;
+}
+
 /**
- * Сервис для работы с презентациями
+ * Сервис для работы с презентациями и видео
  */
 export class PresentationService {
   private presentations: Record<string, PresentationConfig> = {};
-
-  constructor() {
-    this.loadPresentations();
-  }
+  private openedFiles: Map<string, OpenedFile> = new Map();
 
   /**
-   * Загрузка списка презентаций
+   * Определить тип файла по расширению
    */
-  private loadPresentations(): void {
-    this.presentations = {
-      'первый закон ньютона': {
-        name: 'Первый закон Ньютона',
-        path: 'presentations/newton-first-law.pptx',
-        description: 'Закон инерции'
-      },
-      'второй закон ньютона': {
-        name: 'Второй закон Ньютона',
-        path: 'presentations/newton-second-law.pptx',
-        description: 'F = ma'
-      },
-      'кинетическая энергия': {
-        name: 'Кинетическая энергия',
-        path: 'presentations/kinetic-energy.pptx',
-        description: 'Энергия движения'
-      }
-    };
+  private getFileType(filePath: string): 'presentation' | 'video' | null {
+    const ext = path.extname(filePath).toLowerCase();
+    if (['.pptx', '.ppt'].includes(ext)) return 'presentation';
+    if (['.mp4', '.avi', '.mov'].includes(ext)) return 'video';
+    return null;
   }
 
   /**
-   * Открыть презентацию по имени
+   * Открыть презентацию или видео с отслеживанием процесса
    */
   async openPresentation(filePath: string): Promise<void> {
     try {
-      const result = await shell.openPath(filePath);
+      const fileType = this.getFileType(filePath);
 
-      if (result) {
-        console.error(`❌ Ошибка открытия файла: ${result}`);
-        throw new Error(result);
+      if (fileType) {
+        // Открываем через spawn для отслеживания процесса
+        const childProcess = spawn('cmd', ['/c', 'start', '', filePath], {
+          detached: true,
+          stdio: 'ignore'
+        });
+
+        const pid = childProcess.pid;
+        if (pid) {
+          this.openedFiles.set(filePath, {
+            filePath,
+            fileType,
+            process: childProcess,
+            pid
+          });
+
+          console.log(`✅ Файл открыт с PID ${pid}: ${filePath}`);
+
+          // Отслеживаем закрытие процесса
+          childProcess.on('exit', () => {
+            this.openedFiles.delete(filePath);
+            console.log(`📪 Файл закрыт: ${filePath}`);
+          });
+
+          childProcess.unref();
+        }
+      } else {
+        // Для других типов файлов используем обычное открытие
+        const result = await shell.openPath(filePath);
+        if (result) {
+          console.error(`❌ Ошибка открытия файла: ${result}`);
+          throw new Error(result);
+        }
+        console.log(`✅ Файл открыт: ${filePath}`);
       }
-
-      console.log(`✅ Файл открыт: ${filePath}`);
     } catch (error) {
       console.error('❌ Ошибка открытия файла:', error);
       throw error;
     }
+  }
+
+  /**
+   * Закрыть презентацию
+   */
+  async closePresentation(): Promise<void> {
+    const presentations = Array.from(this.openedFiles.values())
+      .filter(f => f.fileType === 'presentation');
+
+    if (presentations.length === 0) {
+      throw new Error('Нет открытых презентаций');
+    }
+
+    // Закрываем последнюю открытую презентацию
+    const last = presentations[presentations.length - 1];
+    this.closeFile(last);
+    console.log(`✅ Презентация закрыта: ${last.filePath}`);
+  }
+
+  /**
+   * Закрыть видео
+   */
+  async closeVideo(): Promise<void> {
+    const videos = Array.from(this.openedFiles.values())
+      .filter(f => f.fileType === 'video');
+
+    if (videos.length === 0) {
+      throw new Error('Нет открытых видео');
+    }
+
+    // Закрываем последнее открытое видео
+    const last = videos[videos.length - 1];
+    this.closeFile(last);
+    console.log(`✅ Видео закрыто: ${last.filePath}`);
+  }
+
+  /**
+   * Закрыть файл по процессу
+   */
+  private closeFile(openedFile: OpenedFile): void {
+    try {
+      if (process.platform === 'win32') {
+        // Windows: используем taskkill
+        spawn('taskkill', ['/PID', openedFile.pid.toString(), '/F'], {
+          detached: true,
+          stdio: 'ignore'
+        });
+      } else {
+        // Unix-like: используем kill
+        openedFile.process.kill('SIGTERM');
+      }
+
+      this.openedFiles.delete(openedFile.filePath);
+    } catch (error) {
+      console.error('❌ Ошибка закрытия файла:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получить список открытых файлов
+   */
+  getOpenedFiles(): OpenedFile[] {
+    return Array.from(this.openedFiles.values());
   }
 
   /**
@@ -73,56 +158,10 @@ export class PresentationService {
     // Пытаемся найти и открыть файл
     for (const fullPath of possiblePaths) {
       if (fs.existsSync(fullPath)) {
-        await shell.openPath(fullPath);
+        await this.openPresentation(fullPath);
         return;
       }
     }
-
-    // Если файл не найден, создаем информационную страницу
-    await this.createFallbackPage(presentation);
-  }
-
-  /**
-   * Создать информационную страницу если презентация не найдена
-   */
-  private async createFallbackPage(presentation: PresentationConfig): Promise<void> {
-    const fallbackHtml = `<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>${presentation.name}</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 50px auto;
-      padding: 20px;
-      background: #f0f0f0;
-    }
-    .container {
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      text-align: center;
-    }
-    h1 { color: #333; }
-    p { color: #666; line-height: 1.6; }
-    .warning { color: #e67e22; font-size: 1.2em; margin: 20px 0; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>📊 ${presentation.name}</h1>
-    <p><strong>Описание:</strong> ${presentation.description || 'Нет описания'}</p>
-    <p class="warning">⚠️ Презентация не найдена</p>
-    <p>Поместите файл "${path.basename(presentation.path)}" в папку presentations</p>
-  </div>
-</body>
-</html>`;
-
-    const tempPath = path.join(app.getPath('temp'), `presentation-info-${Date.now()}.html`);
-    fs.writeFileSync(tempPath, fallbackHtml, 'utf8');
-    await shell.openPath(tempPath);
   }
 
   /**

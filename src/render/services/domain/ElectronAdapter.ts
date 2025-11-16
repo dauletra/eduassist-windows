@@ -21,8 +21,14 @@ export class ElectronAdapter {
     return window.electronAPI.selectRandomStudent(classId, groupId);
   }
 
+  async getPresentationsPath() { return window.electronAPI.getPresentationsPath(); }
+  async getLessonFiles(basePath: string) { return window.electronAPI.getLessonFiles(basePath); }
+
   async openFile(filePath: string) { return window.electronAPI.openFile(filePath); }
+  async openUrlFile(filePath: string) { return window.electronAPI.openUrlFile(filePath); }
   async printFile(filePath: string) { return window.electronAPI.printFile(filePath); }
+  async closePresentation() { return window.electronAPI.closePresentation(); }
+  async closeVideo() { return window.electronAPI.closeVideo(); }
 
   async loadSettings() { return window.electronAPI.loadSettings(); }
   async saveSettings(settings: any) { return window.electronAPI.saveSettings(settings); }

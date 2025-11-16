@@ -1,5 +1,5 @@
 ﻿Project structure (excluded: node_modules, dist-render, dist-electron, dist, .git, .idea)
-Generated: 11/15/2025 18:04:13
+Generated: 11/17/2025 00:43:56
 
 .
 |-- dist-react
@@ -90,12 +90,16 @@ Generated: 11/15/2025 18:04:13
 |       |   |   |-- definitions
 |       |   |   |   +-- groupFormationAlgorithm.ts
 |       |   |   |-- newCommands
+|       |   |   |   |-- closeFile.command.ts
 |       |   |   |   |-- closeJournal.command.ts
 |       |   |   |   |-- divideStudents.command.ts
 |       |   |   |   |-- index.ts
 |       |   |   |   |-- loadData.command.ts
+|       |   |   |   |-- openFile.command.ts
 |       |   |   |   |-- openJournal.command.ts
+|       |   |   |   |-- openSettings.command.ts
 |       |   |   |   |-- randomStudent.command.ts
+|       |   |   |   |-- selectLesson.command.ts
 |       |   |   |   |-- setGrade.command.ts
 |       |   |   |   +-- updateAttendance.command.ts
 |       |   |   |-- CommandDispatcher.ts
@@ -108,6 +112,7 @@ Generated: 11/15/2025 18:04:13
 |       |   |   +-- VoiceCommandProcessor.ts
 |       |   |-- domain
 |       |   |   |-- AttendanceService.ts
+|       |   |   |-- DataService.ts
 |       |   |   |-- ElectronAdapter.ts
 |       |   |   |-- FileService.ts
 |       |   |   |-- GradeService.ts
@@ -129,6 +134,7 @@ Generated: 11/15/2025 18:04:13
 |       |   +-- index.ts
 |       |-- App.css
 |       |-- App.tsx
+|       |-- gradeValidation.ts
 |       |-- index.css
 |       |-- main.tsx
 |       |-- settings-main.tsx
@@ -138,9 +144,7 @@ Generated: 11/15/2025 18:04:13
 |-- desktopIcon.png
 |-- electron-builder.json
 |-- eslint.config.js
-|-- fixJournal.js
 |-- index.html
-|-- migrate.js
 |-- package.json
 |-- package-lock.json
 |-- README.md

@@ -14,6 +14,7 @@ export interface IElectronAPI {
   selectLessonPlansFolder: () => Promise<string | null>;
   saveLessonPlansPath: (path: string) => Promise<boolean>;
   getLessonPlansPath: () => Promise<string>;
+  getPresentationsPath: () => Promise<string>;
   scanLessonPlans: (basePath: string) => Promise<ClassFolder[]>;
   getCurrentClass: () => Promise<string>;
   getLessonFiles: (lessonPath: string) => Promise<FileItem[]>;
@@ -22,6 +23,11 @@ export interface IElectronAPI {
   divideStudents: (classId: string, groupId: string, groupCount: number) => Promise<Student[][]>;
   selectRandomStudent: (classId: string, groupId: string) => Promise<Student>;
   openPresentation: (name: string) => Promise<void>;
+  openFile: (filePath: string) => Promise<void>;
+  openUrlFile: (filePath: string) => Promise<void>;
+  closePresentation: () => Promise<void>;
+  closeVideo: () => Promise<void>;
+  printFile: (filePath: string) => Promise<void>;
   printTasks: () => Promise<void>;
   getDevices: () => Promise<{
     printers: Device[];
@@ -57,6 +63,13 @@ export interface IElectronAPI {
   notifyMainWindow: (channel: string) => void;
   onSettingsUpdated: (callback: () => void) => void;
   removeSettingsUpdatedListener: () => void;
+
+  // Голосовой ассистент
+  startVoiceListening: () => Promise<void>;
+  stopVoiceListening: () => Promise<void>;
+  onWakeWordDetected: (callback: () => void) => void;
+  onVoiceCommand: (callback: (cmd: any) => void) => void;
+  onListeningStateChanged: (callback: (state: any) => void) => void;
 }
 
 // Структура класса

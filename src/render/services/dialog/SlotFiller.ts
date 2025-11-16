@@ -1,80 +1,178 @@
 // src/render/services/dialog/SlotFiller.ts
 
 import type { CLUResponse } from '../CLUService';
-import type { DialogContext } from '../commands';
-import type { AppStore } from '../../store';
 
 /**
  * SlotFiller отвечает за нормализацию CLU entities в параметры команд
  */
 export class SlotFiller {
-  private store: AppStore;
-
-  constructor(store: AppStore) {
-    this.store = store;
-  }
-
   /**
    * Заполнить параметры команды из CLU entities
    */
-  fillSlotsFromCLU(cluResponse: CLUResponse, context: DialogContext): Record<string, any> {
-    const params: Record<string, any> = {};
+  fillSlotsFromCLU(cluResponse: CLUResponse): Record<string, any> {
+    return this.normalizeByIntent(cluResponse.topIntent, cluResponse.entities);
+  }
 
-    cluResponse.entities.forEach(entity => {
-      const extraInfo = Array.isArray(entity.extraInformation)
-        ? entity.extraInformation[0]
-        : entity.extraInformation;
-      const value = extraInfo?.listKey ?? entity.text;
+  /**
+   * Нормализация по типу интента
+   */
+  private normalizeByIntent(intent: string, entities: any[]): any {
+    switch (intent) {
+      case 'OpenJournal':
+        console.log('  → normalizeOpenJournal');
+        return this.normalizeOpenJournal(entities);
 
-      switch (entity.category) {
-        case 'StudentName':
-          // Найти studentId по имени
-          params.studentName = value;
-          params.studentId = this.findStudentIdByName(value, context);
-          break;
+      case 'SetGrade':
+      case ' SetGrade':
+        console.log('  → normalizeSetGrade');
+        return this.normalizeSetGrade(entities);
 
-        case 'NumberValue':
-          // Преобразовать в число
-          params.numberValue = this.normalizeNumber(value);
-          break;
+      case 'DivideByCount':
+      case ' DivideByCount':
+      case 'DivideBySize':
+        console.log('  → normalizeDivide');
+        return this.normalizeDivide(entities);
 
-        case 'ClassNumber':
-          params.classNumber = value;
-          break;
+      case 'RandomStudent':
+        console.log('  → empty object');
+        return {};
 
-        case 'ClassLetter':
-          params.classLetter = value;
-          break;
+      case 'MarkAbsent':
+        console.log('  → markAbsent');
+        return this.normalizeMarkAbsent(entities);
 
-        case 'GroupNumber':
-          params.groupNumber = this.normalizeGroupNumber(value);
-          break;
+      default:
+        console.log('  → normalizeGeneric (FALLBACK)');
+        return this.normalizeGeneric(entities);
+    }
+  }
 
-        default:
-          // Остальные entities оставляем как есть
-          params[entity.category] = value;
-      }
+  /**
+   * Нормализация для OpenJournal
+   */
+  private normalizeOpenJournal(entities: any[]): any {
+    const params: any = {};
+
+    // ClassNumber: только NumberValue > 6
+    const numberValues = entities.filter(e => e.category === 'NumberValue');
+    const classNumber = numberValues.find(e => {
+      const key = e.extraInformation?.[0]?.key;
+      return key && parseInt(key) > 6;
     });
 
-    // Если есть ClassNumber и ClassLetter, пытаемся найти groupId
-    if (params.classNumber && params.classLetter) {
-      params.groupId = this.findGroupId(params.classNumber, params.classLetter, params.groupNumber);
+    if (classNumber) {
+      params.classNumber = classNumber.extraInformation[0].key;
+    }
+
+    // ClassLetter - преобразуем в заглавную
+    const classLetter = entities.find(e => e.category === 'ClassLetter');
+    if (classLetter) {
+      const letter = classLetter.extraInformation?.[0]?.key || classLetter.text;
+      params.classLetter = letter.toUpperCase();
+    }
+
+    // GroupNumber - берем только цифру из key
+    const groupNumber = entities.find(e => e.category === 'GroupNumber');
+    if (groupNumber) {
+      const key = groupNumber.extraInformation?.[0]?.key || groupNumber.text;
+      // Извлекаем только цифру из "2 топ" или "екінші топ"
+      const match = key.match(/\d+/);
+      params.groupNumber = match ? match[0] : key;
     }
 
     return params;
   }
 
   /**
-   * Найти studentId по имени ученика
+   * Нормализация для SetGrade
    */
-  private findStudentIdByName(name: string, context: DialogContext): string | undefined {
-    if (!context.currentLesson) return undefined;
+  private normalizeSetGrade(entities: any[]): any {
+    const params: any = {};
 
-    const student = context.currentLesson.students.find(
-      s => s.name.toLowerCase() === name.toLowerCase()
-    );
+    // StudentName
+    const studentNames = entities.filter(e => e.category === 'StudentName');
+    let validStudent = studentNames.find(e => e.extraInformation?.[0]?.key);
 
-    return student?.id;
+    // Если нет - берем первого по тексту
+    if (!validStudent && studentNames.length > 0) {
+      validStudent = studentNames[0];
+    }
+
+    if (validStudent) {
+      // Приоритет: extraInformation.key -> text
+      params.studentName = validStudent.extraInformation?.[0]?.key || validStudent.text;
+    }
+
+    // NumberValue (оценка)
+    const numberValue = entities.find(e => e.category === 'NumberValue');
+    if (numberValue) {
+      const value = numberValue.extraInformation?.[0]?.key || numberValue.text;
+      params.numberValue = this.normalizeNumber(value);
+    }
+
+    return params;
+  }
+
+  /**
+   * Нормализация для MarkAbsent
+   */
+  private normalizeMarkAbsent(entities: any[]): any {
+    const params: any = {};
+
+    // StudentName
+    const studentNames = entities.filter(e => e.category === 'StudentName');
+
+    // Сначала ищем с extraInformation (предпочтительно)
+    let validStudent = studentNames.find(e => e.extraInformation?.[0]?.key);
+
+    // Если нет - берем первого по тексту
+    if (!validStudent && studentNames.length > 0) {
+      validStudent = studentNames[0];
+    }
+
+    if (validStudent) {
+      // Приоритет: extraInformation.key -> text
+      params.studentName = validStudent.extraInformation?.[0]?.key || validStudent.text;
+    }
+
+    // Отсутствие всегда false (отсутствует)
+    params.attendance = false;
+
+    return params;
+  }
+
+  /**
+   * Нормализация для DivideByGroupCount и DivideByGroupSize
+   */
+  private normalizeDivide(entities: any[]): any {
+    const params: any = {};
+
+    // NumberValue (количество групп или размер группы)
+    const numberValue = entities.find(e => e.category === 'NumberValue');
+    if (numberValue) {
+      const value = numberValue.extraInformation?.[0]?.key || numberValue.text;
+      params.numberValue = this.normalizeNumber(value);
+    }
+
+    return params;
+  }
+
+  /**
+   * Общая нормализация (fallback)
+   */
+  private normalizeGeneric(entities: any[]): any {
+    const params: Record<string, any> = {};
+
+    entities.forEach(entity => {
+      const extraInfo = Array.isArray(entity.extraInformation)
+        ? entity.extraInformation[0]
+        : entity.extraInformation;
+      const value = extraInfo?.key ?? entity.text;
+
+      params[entity.category] = value;
+    });
+
+    return params;
   }
 
   /**
@@ -100,92 +198,5 @@ export class SlotFiller {
     };
 
     return textNumbers[value.toLowerCase()] ?? 0;
-  }
-
-  /**
-   * Нормализовать номер группы
-   */
-  private normalizeGroupNumber(value: string): string {
-    if (!value) return '';
-
-    // Убираем слова "группы", "группа" и оставляем только цифру
-    const cleaned = value
-      .replace(/группы?/gi, '')
-      .replace(/\s+/g, '')
-      .trim();
-
-    return cleaned || value.trim();
-  }
-
-  /**
-   * Найти groupId по номеру класса, букве и номеру группы
-   */
-  private findGroupId(classNumber: string, classLetter: string, groupNumber?: string): string | undefined {
-    const state = this.store.getState();
-    const className = `${classNumber}${classLetter.toUpperCase()}`;
-
-    const foundClass = state.classes.find(c => c.name === className);
-    if (!foundClass) return undefined;
-
-    if (groupNumber) {
-      const group = foundClass.groups.find(g => g.name.includes(groupNumber));
-      return group?.id;
-    }
-
-    // Если группа не указана, вернуть первую
-    return foundClass.groups[0]?.id;
-  }
-
-  /**
-   * Проверить, достаточно ли параметров для команды
-   */
-  validateParams(
-    commandType: string,
-    params: Record<string, any>,
-    context: DialogContext
-  ): {
-    isValid: boolean;
-    missingParams?: string[];
-    message?: string;
-  } {
-    // Базовая валидация контекста
-    if (commandType !== 'OpenJournal' && !context.classId) {
-      return {
-        isValid: false,
-        message: 'Сначала откройте журнал'
-      };
-    }
-
-    // Валидация для SetGrade
-    if (commandType === 'SetGrade') {
-      if (!params.studentId && !params.studentName) {
-        return {
-          isValid: false,
-          message: 'Не указан ученик',
-          missingParams: ['studentName']
-        };
-      }
-
-      if (params.numberValue === undefined) {
-        return {
-          isValid: false,
-          message: 'Не указана оценка',
-          missingParams: ['numberValue']
-        };
-      }
-    }
-
-    // Валидация для DivideByGroupCount и DivideByGroupSize
-    if (commandType === 'DivideByGroupCount' || commandType === 'DivideByGroupSize') {
-      if (params.numberValue === undefined) {
-        return {
-          isValid: false,
-          message: 'Не указано количество',
-          missingParams: ['numberValue']
-        };
-      }
-    }
-
-    return { isValid: true };
   }
 }

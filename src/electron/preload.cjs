@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     printTasks: () => ipcRenderer.invoke('print-tasks'),
     printFile: (filePath) => ipcRenderer.invoke('print-file', filePath),
     openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
+    openUrlFile: (filePath) => ipcRenderer.invoke('open-url-file', filePath),
+    closePresentation: () => ipcRenderer.invoke('close-presentation'),
+    closeVideo: () => ipcRenderer.invoke('close-video'),
     getDevices: () => ipcRenderer.invoke('get-devices'),
 
     // Настройки - ИСПРАВЛЕНО!
@@ -42,6 +45,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     selectLessonPlansFolder: () => ipcRenderer.invoke('select-lesson-plans-folder'),
     saveLessonPlansPath: (path) => ipcRenderer.invoke('save-lesson-plans-path', path),
     getLessonPlansPath: () => ipcRenderer.invoke('get-lesson-plans-path'),
+    getPresentationsPath: () => ipcRenderer.invoke('get-presentations-path'),
     scanLessonPlans: (basePath) => ipcRenderer.invoke('scan-lesson-plans', basePath),
     getCurrentClass: () => ipcRenderer.invoke('get-current-class'),
     getLessonFiles: (lessonPath) => ipcRenderer.invoke('get-lesson-files', lessonPath),

@@ -1,6 +1,7 @@
 // src/render/services/domain/JournalService.ts
 import { AppStore } from "../../store";
 import { ElectronAdapter } from "./ElectronAdapter";
+import type { FileItem } from '../../types'
 
 export class JournalService {
   private store: AppStore;
@@ -33,12 +34,24 @@ export class JournalService {
       lessons = await this.api.getLessonsByGroup(classId, groupId);
     }
 
+    // 🔹 Новый блок: загрузка файлов презентаций
+    let lessonFiles: FileItem[] = [];
+    try {
+      const basePath = await this.api.getPresentationsPath();
+      if (basePath) {
+        lessonFiles = await this.api.getLessonFiles(basePath);
+      }
+    } catch (err) {
+      console.error("Ошибка загрузки файлов презентаций:", err);
+    }
+
     this.store.setState(prev => ({
       ...prev,
       currentClassId: classId,
       currentGroupId: groupId,
       currentLessonId: todayLesson.id,
       lessons,
+      lessonFiles,
       loading: false
     }));
 

@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useCommands } from '../hooks/useCommands';
 import { ChevronLeft, ChevronRight, MoreHorizontal, MessageSquare, UserX } from 'lucide-react';
 import type {SelectedGroup, EnrichedLesson } from '../types';
-import type {CommandResult} from "../services/commands";
+import type { CommandResult } from "../services/commands";
+import { validateGrade, formatGradeInput } from "../gradeValidation.ts";
 
 interface StudentJournalProps {
   selectedGroup: SelectedGroup;
@@ -103,7 +104,7 @@ const StudentJournal = ({
     setOpenMenu(studentId);
   };
 
-  const handleGradeClick = async (studentId: string, grade: number) => {
+  const handleGradeClick = useCallback(async (studentId: string, grade: number | null) => {
     console.log('🖱️ UI: Grade button clicked', { studentId, grade });
 
     const result = await commands.setGrade(studentId, grade);
@@ -113,7 +114,7 @@ const StudentJournal = ({
       // Опционально: показать уведомление об ошибке
     }
     // UI обновится автоматически через VoiceCommandBus в App.tsx
-  };
+  }, []);
 
   // Обработчики для меню
   const handleQuickScore = useCallback((studentId: string, score: string) => {
@@ -230,7 +231,14 @@ const StudentJournal = ({
                       placeholder="—"
                       className="w-12 h-7 text-center text-sm border border-gray-300 rounded focus:border-purple-500 focus:outline-none transition-colors"
                       value={student.displayGrade}
-                      onChange={(e) => handleGradeClick(student.id, Number(e.target.value))}
+                      onChange={(e) => {
+                        const formatted = formatGradeInput(e.target.value);
+                        const validatedGrade = validateGrade(formatted);
+
+                        if (validatedGrade !== null || formatted === '') {
+                          handleGradeClick(student.id, validatedGrade)
+                        }
+                      }}
                       maxLength={2}
                       aria-label={`Оценка для ${student.name}`}
                     />

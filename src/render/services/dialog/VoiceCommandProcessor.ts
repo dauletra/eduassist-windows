@@ -26,7 +26,7 @@ export class VoiceCommandProcessor {
     this.state = new DialogState();
     this.commandDispatcher = commandDispatcher;
     this.store = store;
-    this.slotFiller = new SlotFiller(store);
+    this.slotFiller = new SlotFiller();
   }
 
   async process(
@@ -47,29 +47,36 @@ export class VoiceCommandProcessor {
       entities: cluResponse.entities
     });
 
-    const intentName = cluResponse.topIntent;
+    let intentName = cluResponse.topIntent;
+    intentName = intentName.trim();
+    const confidence = cluResponse.intents[0]?.confidenceScore || 0;
+
+    // Проверка уверенности
+    if (confidence < 0.75) {
+      console.log(`❌ Low confidence: ${(confidence * 100).toFixed(1)}%`);
+      return {
+        success: false,
+        message: 'Түсінбедім, қайтадан айтыңызшы',
+        needsClarification: true
+      };
+    }
 
     // Упрощенная обработка - напрямую выполняем команду
     try {
       console.log('✅ Executing command via CommandDispatcher...');
 
       // Преобразуем entities в параметры
-      const params = this.slotFiller.fillSlotsFromCLU(cluResponse, context);
-      console.log('Normalized params:', params);
+      const params = this.slotFiller.fillSlotsFromCLU(cluResponse);
 
-      // Валидация параметров
-      const validation = this.slotFiller.validateParams(intentName, params, context);
-      if (!validation.isValid) {
-        console.log('❌ Validation failed:', validation.message);
-        this.state.setActiveIntent(intentName, params);
-        console.groupEnd();
-        return {
-          success: false,
-          needsClarification: true,
-          clarificationQuestion: validation.message,
-          message: validation.message || 'Недостаточно параметров'
-        };
+      if (intentName === 'DivideByCount') {
+        intentName = 'DivideByGroupSize'
+      } else if (intentName === 'DivideBySize') {
+        intentName = 'DivideByGroupCount'
+      } else if (intentName === 'MarkAbsent') {
+        intentName = 'UpdateAttendance'
       }
+      console.log(`IntentName: ${intentName}`);
+      console.log('Normalized params:', params);
 
       const result = await this.commandDispatcher.executeFromVoice(intentName, params);
 

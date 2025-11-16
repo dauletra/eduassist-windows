@@ -5,6 +5,7 @@ import * as fs from 'fs/promises';
 import type { ClassFolder, LessonFolder, FileItem } from '../../shared-types.js';
 import { fileExists } from '../../utils/file-utils.js';
 import { configService } from '../services/config.service.js'
+import { DATA_PATHS } from "../../utils/paths.js";
 
 let currentClass: string = '';
 
@@ -52,6 +53,11 @@ export function registerLessonPlansHandlers(): void {
     }
 
     return savedPath;
+  });
+
+  ipcMain.handle('get-presentations-path', async () => {
+    const config = configService.loadConfig();
+    return config?.paths?.presentationsDir || DATA_PATHS.presentations();
   });
 
   // Сканирование папки поурочных планов
