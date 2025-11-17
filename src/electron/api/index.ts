@@ -11,6 +11,7 @@ import { registerTeacherHandlers } from './handlers/teacher.handler.js';
 import { registerWindowHandlers } from './handlers/window.handler.js';
 import { registerVoiceHandlers } from './handlers/voice.handler.js';
 import {registerLessonPlansHandlers} from "./handlers/lesson-plans.handler.js";
+import {registerTelegramHandlers} from "./handlers/telegram.handler.js";
 
 /**
  * Инициализация и регистрация всех IPC обработчиков
@@ -29,6 +30,7 @@ export function setupElectronAPI(mainWindow: BrowserWindow): void {
   registerTeacherHandlers();
   registerWindowHandlers(mainWindow);
   registerVoiceHandlers(mainWindow);
+  registerTelegramHandlers()
 
   // Очистка старых резервных копий
   backupService.cleanupOldBackups()

@@ -70,6 +70,17 @@ export interface IElectronAPI {
   onWakeWordDetected: (callback: () => void) => void;
   onVoiceCommand: (callback: (cmd: any) => void) => void;
   onListeningStateChanged: (callback: (state: any) => void) => void;
+
+  // Telegram методы
+  getTelegramQRToken: (studentId: string) => Promise<TelegramQRResponse>;
+  getTelegramRegistrationStatus: (classId: string, groupId: string) => Promise<{ students: TelegramRegistrationStatus[] }>;
+  sendTelegramMaterial: (payload: {
+    lesson_id: string;
+    file_path?: string;
+    url?: string;
+    caption: string;
+  }) => Promise<TelegramSendResponse>;
+  readUrlFileContent: (filePath: string) => Promise<string>;
 }
 
 // Структура класса
@@ -287,4 +298,38 @@ export interface AppConfig {
     animations: boolean;
     showNotifications: boolean;
   };
+}
+
+// ============================================================================
+// Telegram Types
+// ============================================================================
+
+export interface TelegramRegistration {
+  student_id: string;
+  student_name: string;
+  class_name: string;
+  group_name: string;
+  token: string;
+  telegram_id: number | null;
+  registered: boolean;
+  created_at: string;
+  registered_at: string | null;
+}
+
+export interface TelegramQRResponse {
+  token: string;
+  qr_url: string;
+  registered: boolean;
+}
+
+export interface TelegramRegistrationStatus {
+  id: string;
+  name: string;
+  registered: boolean;
+  registered_at: string | null;
+}
+
+export interface TelegramSendResponse {
+  success: boolean;
+  sent_count: number;
 }

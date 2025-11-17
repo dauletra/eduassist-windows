@@ -72,6 +72,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onWakeWordDetected: (callback) => ipcRenderer.on('voice:wakeword-detected', callback),
     onVoiceCommand: (callback) => ipcRenderer.on('voice-command', (_event, cmd) => callback(cmd)),
     onListeningStateChanged: (callback) => ipcRenderer.on('listening-state-changed', (_event, state) => callback(state)),
+
+    // Telegram методы
+    getTelegramQRToken: (studentId) => ipcRenderer.invoke('telegram:get-qr-token', studentId),
+    getTelegramRegistrationStatus: (classId, groupId) => ipcRenderer.invoke('telegram:get-registration-status', classId, groupId),
+    sendTelegramMaterial: (payload) => ipcRenderer.invoke('telegram:send-material', payload),
+    readUrlFileContent: (filePath) => ipcRenderer.invoke('read-url-file-content', filePath),
 });
 
 console.log('✅ Preload Script Loaded');

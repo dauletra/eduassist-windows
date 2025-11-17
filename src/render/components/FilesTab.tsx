@@ -1,7 +1,9 @@
 // src/render/components/FilesTab.tsx
 
 import { useEffect, useMemo, useState } from "react";
-import { Folder, FileText, Presentation, File, Link as LinkIcon, Video } from "lucide-react";
+import { useStore } from "../store/useStore";
+import { Folder, FileText, Presentation, File, Link as LinkIcon, Video, Loader2, Send } from "lucide-react";
+import { useAppState, useCommandDispatcher } from '../contexts/StoreContext';
 import type { FileItem } from "../types";
 import { Toast } from "./Toast.tsx";
 
@@ -25,6 +27,65 @@ const FilesTab = (_props: FilesTabProps) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [printingFileId, setPrintingFileId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [sendingFile, setSendingFile] = useState<string | null>(null);
+  const state = useAppState();
+
+  const handleSendToTelegram = async (filePath: string, fileName: string) => {
+    const { currentLesson } = state;
+
+    if (!currentLesson) {
+      setToast({ message: 'Сначала откройте журнал урока', type: 'error' });
+      return;
+    }
+
+    try {
+      setSendingFile(filePath);
+
+      // Проверка: это .url файл?
+      const isUrlFile = filePath.toLowerCase().endsWith('.url');
+
+      if (isUrlFile) {
+        // Читаем содержимое .url файла
+        const urlContent = await window.electronAPI.readUrlFileContent(filePath);
+
+        // Отправляем как ссылку
+        const result = await window.electronAPI.sendTelegramMaterial({
+          lesson_id: currentLesson.id,
+          url: urlContent,
+          caption: `Материалы урока: ${currentLesson.topic}`
+        });
+
+        if (result.success) {
+          setToast({
+            message: `✅ Ссылка отправлена ${result.sent_count} ученикам`,
+            type: 'success'
+          });
+        }
+      } else {
+        // Отправляем как файл
+        const result = await window.electronAPI.sendTelegramMaterial({
+          lesson_id: currentLesson.id,
+          file_path: filePath,
+          caption: `Материалы урока: ${currentLesson.topic}`
+        });
+
+        if (result.success) {
+          setToast({
+            message: `✅ Файл отправлен ${result.sent_count} ученикам`,
+            type: 'success'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка отправки в Telegram:', error);
+      setToast({
+        message: 'Не удалось отправить. Проверьте подключение к Telegram сервису.',
+        type: 'error'
+      });
+    } finally {
+      setSendingFile(null);
+    }
+  };
 
   // Инициализация: получить путь (из настроек или fallback) и загрузить файлы
   useEffect(() => {
@@ -202,6 +263,26 @@ const FilesTab = (_props: FilesTabProps) => {
               </button>
 
               {rightNode}
+
+              {/* Кнопка отправки в Telegram */}
+              <button
+                onClick={() => handleSendToTelegram(file.path, file.name)}
+                disabled={sendingFile === file.path}
+                className="text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed bg-green-100 text-green-700 hover:bg-green-200"
+                title="Отправить в Telegram"
+              >
+                {sendingFile === file.path ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Отправка...
+                  </>
+                ) : (
+                  <>
+                    <Send size={14} />
+                    Telegram
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

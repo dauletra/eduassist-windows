@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight, MoreHorizontal, MessageSquare, UserX } from 
 import type {SelectedGroup, EnrichedLesson } from '../types';
 import type { CommandResult } from "../services/commands";
 import { validateGrade, formatGradeInput } from "../gradeValidation.ts";
+import { MessageCircle, CheckCircle } from 'lucide-react';
+import { TelegramQRModal } from './TelegramQRModal';
 
 interface StudentJournalProps {
   selectedGroup: SelectedGroup;
@@ -31,6 +33,10 @@ const StudentJournal = ({
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left?: number; right?: number } | null>(null);
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  const [telegramStatuses, setTelegramStatuses] = useState<Map<string, boolean>>(new Map());
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedStudentForQR, setSelectedStudentForQR] = useState<{ id: string; name: string } | null>(null);
 
   const commands = useCommands();
 
@@ -72,6 +78,21 @@ const StudentJournal = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openMenu]);
+
+  // Загрузка Telegram статусов при смене группы
+  useEffect(() => {
+    window.electronAPI
+      .getTelegramRegistrationStatus(selectedGroup.classId, selectedGroup.groupId)
+      .then((data: any) => {
+        const statuses = new Map(
+          data.students.map((s: any) => [s.id, s.registered])
+        );
+        setTelegramStatuses(statuses);
+      })
+      .catch((err: any) => {
+        console.error('Ошибка загрузки Telegram статусов:', err);
+      });
+  }, [selectedGroup.classId, selectedGroup.groupId]);
 
   const handleMenuToggle = (studentId: string, event: React.MouseEvent) => {
     if (openMenu === studentId) {
@@ -139,6 +160,27 @@ const StudentJournal = ({
     setOpenMenu(null);
     setMenuPosition(null);
   }, []);
+
+  const handleShowQRCode = useCallback((studentId: string, studentName: string) => {
+    setSelectedStudentForQR({ id: studentId, name: studentName });
+    setShowQRModal(true);
+  }, []);
+
+  const handleCloseQRModal = useCallback(() => {
+    setShowQRModal(false);
+    setSelectedStudentForQR(null);
+
+    // Перезагрузить статусы после закрытия (на случай регистрации)
+    window.electronAPI
+      .getTelegramRegistrationStatus(selectedGroup.classId, selectedGroup.groupId)
+      .then((data: any) => {
+        const statuses = new Map(
+          data.students.map((s: { id: any; registered: any; }) => [s.id, s.registered])
+        );
+        setTelegramStatuses(statuses);
+      })
+      .catch(console.error);
+  }, [selectedGroup.classId, selectedGroup.groupId]);
 
   return (
     <div className="flex flex-col h-full">
@@ -211,13 +253,31 @@ const StudentJournal = ({
                   key={student.id}
                   className="flex items-center justify-between py-2 px-2 hover:bg-gray-50 rounded transition-colors group"
                 >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500 w-6 flex-shrink-0">
                       {index + 1}.
                     </span>
-                    <span className="text-sm text-gray-700 truncate">
+                    <span className="flex items-center gap-2 flex-1 min-w-0">
                       {student.name}
                     </span>
+
+                    {/* Telegram статус */}
+                    {telegramStatuses.get(student.id) ? (
+                      <CheckCircle
+                        className="w-3.5 h-3.5 text-green-500 flex-shrink-0"
+                        title="Зарегистрирован в Telegram"
+                      />
+                    ) : (
+                      <MessageCircle
+                        className="w-3.5 h-3.5 text-gray-400 hover:text-blue-500 cursor-pointer flex-shrink-0 transition-colors"
+                        title="Показать QR-код для регистрации"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShowQRCode(student.id, student.name);
+                        }}
+                      />
+                    )}
+
                     {!student.attendance && (
                       <span className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded">
                         Нб
@@ -325,6 +385,13 @@ const StudentJournal = ({
           )}
         </div>
       </div>
+      {/* Telegram QR Modal */}
+      {showQRModal && selectedStudentForQR && (
+        <TelegramQRModal
+          student={selectedStudentForQR}
+          onClose={handleCloseQRModal}
+        />
+      )}
 
     </div>
   );

@@ -29,4 +29,5 @@ export const DATA_PATHS = {
   backups: () => path.join(getUserDataPath(), 'backups'),
   presentations: () => path.join(getUserDataPath(), 'presentations'),
   templates: () => path.join(getUserDataPath(), 'templates'),
+  telegram: () => path.join(getUserDataPath(), 'telegram.json'),
 } as const;
