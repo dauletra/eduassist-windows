@@ -29,6 +29,9 @@ export class ElectronAdapter {
   async printFile(filePath: string) { return window.electronAPI.printFile(filePath); }
   async closePresentation() { return window.electronAPI.closePresentation(); }
   async closeVideo() { return window.electronAPI.closeVideo(); }
+  async startPresentation(filePath: string) {
+    return window.electronAPI.startPresentation(filePath);
+  }
 
   async loadSettings() { return window.electronAPI.loadSettings(); }
   async saveSettings(settings: any) { return window.electronAPI.saveSettings(settings); }

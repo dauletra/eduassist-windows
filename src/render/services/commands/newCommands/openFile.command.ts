@@ -5,24 +5,23 @@ import type {Command} from "../CommandDispatcher.ts";
 
 const fileTypeMap: Record<string, FileType> = {
   'презентация': 'presentation',
-  'презентацию': 'presentation',
+  'Презентация': 'presentation',
+  'Презентацияны': 'presentation',
   'видео': 'video',
+  'Видео': 'video',
+  'Видеоны': 'video',
   'документ': 'document',
   'задание': 'task',
-  'ссылка': 'link',
-  'ссылку': 'link'
+  'Сілтеме': 'link',
+  'сілтеме': 'link',
+  'Сілтемеге': 'link',
+  'сілтемеге': 'link',
+  'Сілтемені': 'link',
+  'сілтемені': 'link',
 };
 
 export const openFileCommand: Command = {
   type: 'OpenFile',
-  // displayName: 'Открыть файл',
-  // description: 'Открывает файл по типу и порядковому номеру',
-  // requiresContext: true,
-
-  // params: [
-  //   { name: 'fileType', type: 'string', entityCategory: 'FileType', required: true },
-  //   { name: 'fileNumber', type: 'number', entityCategory: 'NumberValue', required: false, default: 1 }
-  // ],
 
   execute: async (
     store: AppStore,
@@ -32,9 +31,17 @@ export const openFileCommand: Command = {
       const fileService = new FileService(store);
       const fileTypeRu = params.fileType?.toLowerCase();
       const fileType = fileTypeMap[fileTypeRu];
-      const fileNumber = params.fileNumber || 1;
+      const fileNumber = params.numberValue || 1;
 
-      const result = await fileService.openFileFromStore(fileType, fileNumber);
+      let result = { success: false, message: '' };
+
+      if (fileType === 'presentation') {
+        // result = await fileService.startPresentation(fileNumber);
+        result = await fileService.openFileFromStore(fileType, fileNumber);
+
+      } else {
+        result = await fileService.openFileFromStore(fileType, fileNumber);
+      }
 
       return { success: result.success, message: result.message };
     } catch (error) {

@@ -31,6 +31,50 @@ export class PresentationService {
   }
 
   /**
+   * Запустить презентацию в режиме слайдшоу
+   */
+  async startPresentation(filePath: string): Promise<void> {
+    try {
+      if (!fs.existsSync(filePath)) {
+        throw new Error('Файл презентации не найден');
+      }
+
+      const ext = path.extname(filePath).toLowerCase();
+      if (!['.pptx', '.ppt'].includes(ext)) {
+        throw new Error('Файл не является презентацией');
+      }
+
+      // Запускаем PowerPoint в режиме слайдшоу (/s)
+      const childProcess = spawn('powerpnt.exe', ['/s', filePath], {
+        detached: true,
+        stdio: 'ignore'
+      });
+
+      const pid = childProcess.pid;
+      if (pid) {
+        this.openedFiles.set(filePath, {
+          filePath,
+          fileType: 'presentation',
+          process: childProcess,
+          pid
+        });
+
+        console.log(`✅ Презентация запущена в режиме слайдшоу с PID ${pid}: ${filePath}`);
+
+        childProcess.on('exit', () => {
+          this.openedFiles.delete(filePath);
+          console.log(`📪 Презентация закрыта: ${filePath}`);
+        });
+
+        childProcess.unref();
+      }
+    } catch (error) {
+      console.error('❌ Ошибка запуска презентации:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Открыть презентацию или видео с отслеживанием процесса
    */
   async openPresentation(filePath: string): Promise<void> {

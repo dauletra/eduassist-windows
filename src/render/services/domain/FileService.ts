@@ -71,6 +71,34 @@ export class FileService {
   }
 
   /**
+   * Запустить презентацию в режиме слайдшоу
+   */
+  async startPresentation(index: number = 1): Promise<{ success: boolean; message: string }> {
+    const files = this.store.getState().lessonFiles;
+    const file = this.getFileByTypeAndIndex(files, 'presentation', index);
+
+    if (!file) {
+      return {
+        success: false,
+        message: `Презентация №${index} не найдена`
+      };
+    }
+
+    try {
+      await this.api.startPresentation(file.path);
+      return {
+        success: true,
+        message: `Запущена презентация: ${file.name}`
+      };
+    } catch (e) {
+      return {
+        success: false,
+        message: "Ошибка запуска презентации"
+      };
+    }
+  }
+
+  /**
    * Открыть файл по типу и индексу
    */
   async openFileByType(

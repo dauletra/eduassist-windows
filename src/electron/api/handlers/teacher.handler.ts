@@ -19,6 +19,15 @@ export function registerTeacherHandlers(): void {
     }
   });
 
+  ipcMain.handle('start-presentation', async (_event, filePath: string) => {
+    try {
+      await presentationService.startPresentation(filePath);
+    } catch (error) {
+      console.error('❌ Ошибка запуска презентации:', error);
+      throw error;
+    }
+  });
+
   // Открытие любого файла
   ipcMain.handle('open-file', async (_event, filePath: string) => {
     try {

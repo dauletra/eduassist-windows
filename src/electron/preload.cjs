@@ -64,6 +64,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onSettingsUpdated: (callback) => ipcRenderer.on('settings-updated', callback),
     removeSettingsUpdatedListener: () => ipcRenderer.removeAllListeners('settings-updated'),
 
+    startPresentation: (filePath) => ipcRenderer.invoke('start-presentation', filePath),
+
     // Голосовой ассистент
     startVoiceListening: () => ipcRenderer.invoke('start-voice-listening'),
     stopVoiceListening: () => ipcRenderer.invoke('stop-voice-listening'),

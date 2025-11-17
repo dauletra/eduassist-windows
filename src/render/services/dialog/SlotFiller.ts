@@ -41,6 +41,11 @@ export class SlotFiller {
         console.log('  → markAbsent');
         return this.normalizeMarkAbsent(entities);
 
+      case 'OpenFile':
+      case 'CloseFile':
+        console.log('  → normalizeOpenFile');
+        return this.normalizeOpenFile(entities);
+
       default:
         console.log('  → normalizeGeneric (FALLBACK)');
         return this.normalizeGeneric(entities);
@@ -158,6 +163,34 @@ export class SlotFiller {
   }
 
   /**
+   * Нормализация для OpenFile
+   */
+  private normalizeOpenFile(entities: any[]): any {
+    const params: any = {};
+
+    // FileType
+    const fileType = entities.find(e => e.category.trim() === 'FileType');
+    if (fileType) {
+      params.fileType = fileType.extraInformation?.[0]?.key || fileType.text;
+    }
+    if (params.fileType === 'Видеоны' || params.fileType === 'видеоны') {
+      params.fileType = 'Видео'
+    }
+
+    // NumberValue (порядковый номер файла)
+    const numberValue = entities.find(e => e.category === 'NumberValue');
+    if (numberValue) {
+      const value = numberValue.extraInformation?.[0]?.key || numberValue.text;
+      params.numberValue = this.normalizeNumber(value);
+    } else {
+      // По умолчанию открываем первый файл
+      params.numberValue = 1;
+    }
+
+    return params;
+  }
+
+  /**
    * Общая нормализация (fallback)
    */
   private normalizeGeneric(entities: any[]): any {
@@ -185,16 +218,16 @@ export class SlotFiller {
 
     // Текстовые формы чисел
     const textNumbers: Record<string, number> = {
-      'один': 1, 'одна': 1, 'одно': 1,
-      'два': 2, 'две': 2, 'двое': 2,
-      'три': 3, 'трое': 3,
-      'четыре': 4,
-      'пять': 5,
-      'шесть': 6,
-      'семь': 7,
-      'восемь': 8,
-      'девять': 9,
-      'десять': 10
+      'бір': 1, 'бірінші': 1, 'бірден': 1,
+      'екі': 2, 'екінші': 2, 'екіден': 2,
+      'үш': 3, 'үшінші': 3,
+      'төрт': 4,
+      'бес': 5,
+      'алты': 6,
+      'жеті': 7,
+      'сегіз': 8,
+      'тоғыз': 9,
+      'оныншы': 10
     };
 
     return textNumbers[value.toLowerCase()] ?? 0;
