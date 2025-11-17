@@ -1,7 +1,9 @@
 // src/render/services/VoiceCommandBus.ts
 type VoiceEvent =
-  | 'speech-recognized'      // ✅ НОВОЕ: STT завершил распознавание
+  | 'speech-recognized'      // STT завершил распознавание
   | 'command-recognized'     // Команда распознана CLU
+  | 'command-executed'       // ✅ НОВОЕ: Команда успешно выполнена
+  | 'command-failed'         // ✅ НОВОЕ: Команда завершилась с ошибкой
   | 'assistant-question'
   | 'assistant-message'
   | 'voice-error'
@@ -16,6 +18,22 @@ interface VoiceEventMap {
     intent: string;
     entities: any[];
     cluResponse: any;
+  };
+  'command-executed': {      // ✅ НОВОЕ
+    commandType: string;
+    params: Record<string, any>;
+    result: {
+      success: boolean;
+      message: string;
+      data?: any;
+      needsClarification?: boolean;
+      clarificationQuestion?: string;
+    };
+  };
+  'command-failed': {        // ✅ НОВОЕ
+    commandType: string;
+    params?: Record<string, any>;
+    error: string;
   };
   'assistant-question': string | null;
   'assistant-message': string | null;

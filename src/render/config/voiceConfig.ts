@@ -33,6 +33,22 @@ export const VOICE_CONFIG = {
     }
   },
 
+  tts: {
+    enabled: true,
+    voiceName: 'kk-KZ-AigulNeural',
+    locale: 'kk-KZ',
+    commonPhrases: [
+      'Айта беріңіз',
+      'тыңдап тұрмын',
+      'команда орындалды',
+      'түсінбедім',
+      'журнал ашылды',
+      'топтарға бөлінді',
+      'алдымен журналды ашыңыз',
+      'команданы орындай алмадым'
+    ]
+  },
+
   timeouts: {
     wakeWordDelay: 500,
     maxRecordingTime: 10000,

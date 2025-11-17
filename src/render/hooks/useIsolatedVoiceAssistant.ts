@@ -5,6 +5,7 @@ import { createWebSocketService } from '../services/WebSocketService';
 import { createCLUService } from '../services/CLUService';
 import { VOICE_CONFIG } from '../config/voiceConfig';
 import { voiceCommandBus } from '../services/VoiceCommandBus';
+import {createTTSService} from "../services/TTSService.ts";
 
 export type AssistantState =
   | 'inactive'
@@ -41,7 +42,7 @@ export const useIsolatedVoiceAssistant = () => {
 
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ ИЗМЕНЕНИЕ: Создаем экземпляры через factory функции
+  // Сервисы
   const audioServiceRef = useRef(createAudioService());
   const wsServiceRef = useRef(
     createWebSocketService({
@@ -55,6 +56,15 @@ export const useIsolatedVoiceAssistant = () => {
       baseUrl: VOICE_CONFIG.api.baseUrl,
       apiKey: VOICE_CONFIG.api.apiKey,
       locale: VOICE_CONFIG.api.language,
+    })
+  );
+  const ttsServiceRef = useRef(
+    createTTSService({
+      baseUrl: VOICE_CONFIG.api.baseUrl,
+      apiKey: VOICE_CONFIG.api.apiKey,
+      voiceName: VOICE_CONFIG.tts.voiceName,
+      locale: VOICE_CONFIG.tts.locale,
+      enabled: VOICE_CONFIG.tts.enabled,
     })
   );
 
@@ -118,7 +128,7 @@ export const useIsolatedVoiceAssistant = () => {
     });
   }, [updateState]);
 
-  // ✅ ИЗМЕНЕНИЕ: Начать запись команды с разделенными колбеками
+  // Начать запись команды
   const startCommandRecording = useCallback(async () => {
     try {
       updateState({
@@ -133,7 +143,6 @@ export const useIsolatedVoiceAssistant = () => {
         onPartial: (text: string) => {
           updateState({ partialTranscript: text });
         },
-        // ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: STT только публикует событие, не вызывает CLU
         onFinal: (text: string) => {
           console.log('🎤 STT Final:', text);
 
@@ -180,7 +189,25 @@ export const useIsolatedVoiceAssistant = () => {
     }
   }, [startAudioCapture, stopCommandRecording, returnToWaitingMode, updateState]);
 
-  // ✅ НОВОЕ: Отдельный обработчик для CLU (подписывается на событие 'speech-recognized')
+  // ✅ НОВОЕ: Обработчик wakeword с голосовым ответом
+  useEffect(() => {
+    const handleWakeWordDetected = async () => {
+      console.log('👂 Wake word detected!');
+
+      // Произнести "тыңдап тұрмын"
+      await ttsServiceRef.current.speak('Айта беріңіз...');
+
+      updateState({ state: 'wakeword-detected', partialTranscript: null });
+
+      setTimeout(() => {
+        startCommandRecording();
+      }, VOICE_CONFIG.timeouts.wakeWordDelay);
+    };
+
+    window.electronAPI.onWakeWordDetected(handleWakeWordDetected);
+  }, [startCommandRecording, updateState]);
+
+  // Обработчик CLU
   useEffect(() => {
     const handleSpeechRecognized = async ({ text }: { text: string }) => {
       console.log('🧠 Processing with CLU:', text);
@@ -206,6 +233,10 @@ export const useIsolatedVoiceAssistant = () => {
 
       } catch (error) {
         console.error('❌ CLU failed:', error);
+
+        // ✅ НОВОЕ: Произнести ошибку
+        await ttsServiceRef.current.speak('сізді дұрыс түсінбеген сияқтымын');
+
         updateState({
           state: 'error',
           error: error instanceof Error ? error.message : 'Ошибка обработки команды',
@@ -223,15 +254,38 @@ export const useIsolatedVoiceAssistant = () => {
     return unsubscribe;
   }, [returnToWaitingMode, updateState]);
 
-  // Подписка на событие wake-word от Node
   useEffect(() => {
-    window.electronAPI.onWakeWordDetected(() => {
-      updateState({ state: 'wakeword-detected', partialTranscript: null });
-      setTimeout(() => {
-        startCommandRecording();
-      }, VOICE_CONFIG.timeouts.wakeWordDelay);
-    });
-  }, [startCommandRecording, updateState]);
+    const handleCommandExecuted = async (data: any) => {
+      console.log('✅ Command executed:', data.result);
+
+      if (data.result && data.result.message) {
+        await ttsServiceRef.current.speak(data.result.message)
+      }
+    };
+
+    const handleCommandFailed = async (error: any) => {
+      console.error('❌ Command failed:', error);
+      await ttsServiceRef.current.speak('команданы орындай алмадым');
+    };
+
+    const unsubscribeExecuted = voiceCommandBus.subscribe('command-executed', handleCommandExecuted);
+    const unsubscribeFailed = voiceCommandBus.subscribe('command-failed', handleCommandFailed);
+
+    return () => {
+      unsubscribeExecuted();
+      unsubscribeFailed();
+    };
+  }, []);
+
+  // Подписка на событие wake-word от Node
+  // useEffect(() => {
+  //   window.electronAPI.onWakeWordDetected(() => {
+  //     updateState({ state: 'wakeword-detected', partialTranscript: null });
+  //     setTimeout(() => {
+  //       startCommandRecording();
+  //     }, VOICE_CONFIG.timeouts.wakeWordDelay);
+  //   });
+  // }, [startCommandRecording, updateState]);
 
   // Инициализация
   const start = useCallback(async () => {
@@ -240,6 +294,10 @@ export const useIsolatedVoiceAssistant = () => {
 
       await window.electronAPI.startVoiceListening();
       await audioServiceRef.current.initialize();
+
+      // ✅ НОВОЕ: Инициализировать TTS и предзагрузить фразы
+      await ttsServiceRef.current.initialize();
+      await ttsServiceRef.current.preloadCommonPhrases(VOICE_CONFIG.tts.commonPhrases);
 
       updateState({
         isActive: true,
@@ -260,7 +318,9 @@ export const useIsolatedVoiceAssistant = () => {
   const stop = useCallback(async () => {
     stopCommandRecording();
     await window.electronAPI.stopVoiceListening();
-    audioServiceRef.current.dispose();
+    await audioServiceRef.current.dispose();
+    await ttsServiceRef.current.dispose();
+
     updateState({
       state: 'inactive',
       isActive: false,
@@ -277,6 +337,7 @@ export const useIsolatedVoiceAssistant = () => {
     return () => {
       audioServiceRef.current.dispose();
       wsServiceRef.current.disconnect();
+      ttsServiceRef.current.dispose();
     };
   }, []);
 

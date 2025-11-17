@@ -3,6 +3,7 @@
 import type { CommandResult } from './types';
 import type { AppStore } from '../../store';
 import { allNewCommands } from './newCommands';
+import { voiceCommandBus } from '../VoiceCommandBus';
 
 /**
  * Интерфейс команды
@@ -86,6 +87,15 @@ export class CommandDispatcher {
     if (!command) {
       console.error(`❌ Command not found: ${commandType}`);
       console.groupEnd();
+
+      // ✅ ДОБАВЛЕНО: Публикуем событие ошибки
+      if (source === 'voice') {
+        voiceCommandBus.publish('command-failed', {
+          commandType,
+          error: `Ондай команда табылмады: "${commandType}" `
+        });
+      }
+
       return {
         success: false,
         message: `Команда "${commandType}" не найдена`
@@ -107,11 +117,28 @@ export class CommandDispatcher {
       console.log(`✅ Command executed successfully:`, result);
       console.groupEnd();
 
+      // ✅ ДОБАВЛЕНО: Публикуем событие успешного выполнения
+      if (source === 'voice') {
+        voiceCommandBus.publish('command-executed', {
+          commandType,
+          params,
+          result
+        });
+      }
+
       return result;
 
     } catch (error) {
       console.error(`❌ Command execution failed:`, error);
       console.groupEnd();
+
+      if (source === 'voice') {
+        voiceCommandBus.publish('command-failed', {
+          commandType,
+          params,
+          error: error instanceof Error ? error.message : 'Түсініксіз қате кетті'
+        });
+      }
 
       return {
         success: false,
