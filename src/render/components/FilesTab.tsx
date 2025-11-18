@@ -34,7 +34,7 @@ const FilesTab = (_props: FilesTabProps) => {
     const { currentLesson } = state;
 
     if (!currentLesson) {
-      setToast({ message: 'Сначала откройте журнал урока', type: 'error' });
+      setToast({ message: 'Алдымен журналды ашыңыз', type: 'error' });
       return;
     }
 
@@ -57,7 +57,7 @@ const FilesTab = (_props: FilesTabProps) => {
 
         if (result.success) {
           setToast({
-            message: `✅ Ссылка отправлена ${result.sent_count} ученикам`,
+            message: `✅ Сілтеме ${result.sent_count} оқушыға жіберілді`,
             type: 'success'
           });
         }
@@ -66,20 +66,20 @@ const FilesTab = (_props: FilesTabProps) => {
         const result = await window.electronAPI.sendTelegramMaterial({
           lesson_id: currentLesson.id,
           file_path: filePath,
-          caption: `Материалы урока: ${currentLesson.topic}`
+          caption: `${currentLesson.topic} сабағы бойынша материал`
         });
 
         if (result.success) {
           setToast({
-            message: `✅ Файл отправлен ${result.sent_count} ученикам`,
+            message: `✅ Файл ${result.sent_count} оқушыға жіберілді`,
             type: 'success'
           });
         }
       }
     } catch (error) {
-      console.error('Ошибка отправки в Telegram:', error);
+      console.error('Telegram файл жіберу қатесі:', error);
       setToast({
-        message: 'Не удалось отправить. Проверьте подключение к Telegram сервису.',
+        message: 'Файл жіберілмеді. Телеграм қызметіне қосылмаған секілді.',
         type: 'error'
       });
     } finally {

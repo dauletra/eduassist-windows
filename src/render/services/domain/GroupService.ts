@@ -31,7 +31,7 @@ export class GroupService {
 
     return {
       success: true,
-      message: `Ученики разделены на ${count} групп`,
+      message: `Оқушылар ${count} топқа бөлінді`,
       data: {
         type: 'groups_formed',
         method: 'by_count',
@@ -51,7 +51,7 @@ export class GroupService {
       return { success: false, message: onlyPresent ? "Нет присутствующих учеников" : "Список пуст" };
     }
     if (!Number.isFinite(size) || size <= 0 || size > pool.length) {
-      return { success: false, message: `Некорректное количество человек: ${size}` };
+      return { success: false, message: `Оқушылар саны дұрыс емес: ${size}` };
     }
 
     const hasConflict = state.currentGroup?.conflicts
@@ -64,7 +64,7 @@ export class GroupService {
 
     return {
       success: true,
-      message: `Ученики разделены по ${size} человек`,
+      message: `Оқушылар ${size} адамнан топтарға бөлінді`,
       data: {
         type: 'groups_formed',
         method: 'by_size',

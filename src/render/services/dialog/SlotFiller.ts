@@ -86,13 +86,25 @@ export class SlotFiller {
       params.classLetter = letter.toUpperCase();
     }
 
-    // GroupNumber - берем только цифру из key
-    const groupNumber = entities.find(e => e.category === 'GroupNumber');
-    if (groupNumber) {
-      const key = groupNumber.extraInformation?.[0]?.key || groupNumber.text;
-      // Извлекаем только цифру из "2 топ" или "екінші топ"
+    // GroupNumber
+    const groupNumbers = entities.filter(e => e.category === 'GroupNumber');
+    let groupEntity = groupNumbers.find(e => e.extraInformation?.[0]?.key);
+
+    if (groupEntity) {
+      // Есть extraInformation - извлекаем цифру из "1 топ"
+      const key = groupEntity.extraInformation[0].key;
       const match = key.match(/\d+/);
       params.groupNumber = match ? match[0] : key;
+    } else if (groupNumbers.length > 0) {
+      // Нет extraInformation - ищем вторую NumberValue (номер группы)
+      const groupNumberValue = numberValues.find(e => {
+        const key = e.extraInformation?.[0]?.key;
+        return key && parseInt(key) <= 6; // NumberValue <= 6 = номер группы
+      });
+
+      if (groupNumberValue) {
+        params.groupNumber = groupNumberValue.extraInformation[0].key;
+      }
     }
 
     return params;

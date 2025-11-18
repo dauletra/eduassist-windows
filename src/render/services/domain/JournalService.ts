@@ -20,17 +20,17 @@ export class JournalService {
 
     const targetClass = allClasses.find((c: { id: string; }) => c.id === classId);
     if (!targetClass) {
-      return { success: false, message: `Класс ${classId} не найден` };
+      return { success: false, message: `${classId} сынып табылмады, қайтадан көріңіз` };
     }
     const targetGroup = targetClass.groups.find((g: { id: string; }) => g.id === groupId);
     if (!targetGroup) {
-      return { success: false, message: `Группа ${groupId} не найдена` };
+      return { success: false, message: `${groupId} топ табылмады` };
     }
 
     let lessons = await this.api.getLessonsByGroup(classId, groupId);
     let todayLesson = await this.api.getTodayLesson(classId, groupId);
     if (!todayLesson) {
-      todayLesson = await this.api.createLesson(classId, groupId, "Урок физики. Тема");
+      todayLesson = await this.api.createLesson(classId, groupId, "Физика сабағы. Тақырып: Ньютонның екінші заңы");
       lessons = await this.api.getLessonsByGroup(classId, groupId);
     }
 
@@ -56,10 +56,10 @@ export class JournalService {
     }));
 
     const displayName = classLetter
-      ? `${classNumber}${classLetter} ${groupNumber} группа`
-      : `${classNumber} класс ${groupNumber} группа`;
+      ? `${classNumber}${classLetter} ${groupNumber} топ`
+      : `${classNumber} сынып ${groupNumber} топ`;
 
-    return { success: true, message: `Журнал ${displayName} открыт` };
+    return { success: true, message: `${displayName} журналы ашылды` };
   }
 
   closeJournal() {
@@ -71,6 +71,6 @@ export class JournalService {
       lessons: [],
       selectedGroup: null
     }));
-    return { success: true, message: "Журнал закрыт" };
+    return { success: true, message: "Журнал жабылды" };
   }
 }

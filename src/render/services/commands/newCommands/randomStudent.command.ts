@@ -20,6 +20,6 @@ export const randomStudentCommand: Command = {
     const selected = pool[Math.floor(Math.random() * pool.length)];
     const data = { type: 'random_student_selected', studentId: selected.id, studentName: selected.name, totalCandidates: pool.length };
     commandEventBus.emit('random_student_selected', data);
-    return { success: true, message: `Выбран ученик: ${selected.name}`, data };
+    return { success: true, message: `Таңдалған оқушы: ${selected.name}`, data };
   }
 };

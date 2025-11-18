@@ -20,11 +20,11 @@ export class GradeService {
 
     const student = new StudentService(this.store).findInCurrentLessonByIdOrName(idOrName);
     if (!student) {
-      return { success: false, message: `Ученик "${idOrName}" не найден` };
+      return { success: false, message: `Ондай оқушы табылмады` };
     }
 
     if (grade !== null && (grade < 1 || grade > 10)) {
-      return { success: false, message: `Недопустимая оценка: ${grade}. Допустимы оценки от 1 до 10`}
+      return { success: false, message: `Баға 1 мен 10 арасында болу керек. ${grade} қою мүмкін емес`}
     }
 
     const updatedStudents = state.currentLesson.students.map(s =>
@@ -42,6 +42,6 @@ export class GradeService {
 
     await this.api.updateGrade(state.currentLessonId!, student.id, grade);
 
-    return { success: true, message: `Оценка ${grade} поставлена ученику ${student.name}` };
+    return { success: true, message: `Бүгін сабақта ${student.name} ${grade} деген баға алды` };
   }
 }

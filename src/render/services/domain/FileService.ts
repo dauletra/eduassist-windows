@@ -80,7 +80,7 @@ export class FileService {
     if (!file) {
       return {
         success: false,
-        message: `Презентация №${index} не найдена`
+        message: `№${index} презентация табылмады`
       };
     }
 
@@ -88,12 +88,12 @@ export class FileService {
       await this.api.startPresentation(file.path);
       return {
         success: true,
-        message: `Запущена презентация: ${file.name}`
+        message: `Презентация ${file.name} ашылды`
       };
     } catch (e) {
       return {
         success: false,
-        message: "Ошибка запуска презентации"
+        message: "Презентацияны ашу кезінде қате пайда болды"
       };
     }
   }
@@ -132,12 +132,12 @@ export class FileService {
 
       return {
         success: true,
-        message: `Открыт файл: ${file.name}`
+        message: `${file.name} файлы ашылды`
       };
     } catch (e) {
       return {
         success: false,
-        message: "Ошибка открытия файла"
+        message: "Файлды ашу кезінде қате пайда болды"
       };
     }
   }
@@ -150,18 +150,18 @@ export class FileService {
   async openFile(filePath: string) {
     try {
       await this.api.openFile(filePath);
-      return { success: true, message: "Файл открыт" };
+      return { success: true, message: "Файл ашылды" };
     } catch (e) {
-      return { success: false, message: "Ошибка открытия файла" };
+      return { success: false, message: "Файлды ашу кезінде қате кетті" };
     }
   }
 
   async printFile(filePath: string) {
     try {
       await this.api.printFile(filePath);
-      return { success: true, message: "Файл отправлен на печать" };
+      return { success: true, message: "Тапсырма басып шығаруға жіберілді" };
     } catch (e) {
-      return { success: false, message: "Ошибка печати файла" };
+      return { success: false, message: "Басып шығару кезінде қате кетті" };
     }
   }
 
@@ -176,18 +176,18 @@ export class FileService {
   async closePresentation() {
     try {
       await this.api.closePresentation();
-      return { success: true, message: "Презентация закрыта" };
+      return { success: true, message: "Презентация жабылды" };
     } catch (e) {
-      return { success: false, message: "Ошибка закрытия презентации" };
+      return { success: false, message: "Презентацияны жабу кезінде қате кетті" };
     }
   }
 
   async closeVideo() {
     try {
       await this.api.closeVideo();
-      return { success: true, message: "Видео закрыто" };
+      return { success: true, message: "Видео жабылды" };
     } catch (e) {
-      return { success: false, message: "Ошибка закрытия видео" };
+      return { success: false, message: "Видеоны жабу кезінде қате кетті" };
     }
   }
 }

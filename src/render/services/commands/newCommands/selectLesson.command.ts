@@ -8,14 +8,14 @@ export const selectLessonCommand: Command = {
     const { lessonId } = params;
 
     if (!lessonId) {
-      return { success: false, message: 'Не указан ID урока' };
+      return { success: false, message: 'Сабақтың ID нөмірі көрсетілмеген' };
     }
 
     const state = store.getState();
     const lesson = state.lessons.find(l => l.id === lessonId);
 
     if (!lesson) {
-      return { success: false, message: 'Урок не найден' };
+      return { success: false, message: 'Сабақ табылмады' };
     }
 
     store.setState(prev => ({

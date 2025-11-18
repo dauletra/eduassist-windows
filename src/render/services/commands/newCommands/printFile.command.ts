@@ -29,7 +29,7 @@ export const printFileCommand: Command = {
       if (!fileType) {
         return {
           success: false,
-          message: 'Файл түрі басып шығаруға келмейді. Тек PDF және Word құжаттарын басып шығаруға болады'
+          message: 'Файл түрі басып шығаруға келмейді'
         };
       }
 
@@ -63,7 +63,7 @@ export const printFileCommand: Command = {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Басып шығару қатесі'
+        message: error instanceof Error ? error.message : 'Басып шығару кезінде қате кетті'
       };
     }
   }
