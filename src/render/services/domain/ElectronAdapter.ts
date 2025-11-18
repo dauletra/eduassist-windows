@@ -36,4 +36,26 @@ export class ElectronAdapter {
   async loadSettings() { return window.electronAPI.loadSettings(); }
   async saveSettings(settings: any) { return window.electronAPI.saveSettings(settings); }
   async openSettingsWindow() { return window.electronAPI.openSettingsWindow(); }
+
+  // Telegram методы
+  async getTelegramQRToken(studentId: string) {
+    return window.electronAPI.getTelegramQRToken(studentId);
+  }
+
+  async getTelegramRegistrationStatus(classId: string, groupId: string) {
+    return window.electronAPI.getTelegramRegistrationStatus(classId, groupId);
+  }
+
+  async sendTelegramMaterial(payload: {
+    lesson_id: string;
+    file_path?: string;
+    url?: string;
+    caption: string;
+  }) {
+    return window.electronAPI.sendTelegramMaterial(payload);
+  }
+
+  async readUrlFileContent(filePath: string) {
+    return window.electronAPI.readUrlFileContent(filePath);
+  }
 }

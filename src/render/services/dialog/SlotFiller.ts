@@ -46,6 +46,16 @@ export class SlotFiller {
         console.log('  → normalizeOpenFile');
         return this.normalizeOpenFile(entities);
 
+      case 'SendMessage':
+      case ' SendMessage':
+        console.log('  → normalizeSendMessage');
+        return this.normalizeSendMessage(entities);
+
+      case 'PrintDocument':
+      case ' PrintDocument':
+        console.log('  → normalizePrintFile');
+        return this.normalizePrintFile(entities);
+
       default:
         console.log('  → normalizeGeneric (FALLBACK)');
         return this.normalizeGeneric(entities);
@@ -184,6 +194,61 @@ export class SlotFiller {
       params.numberValue = this.normalizeNumber(value);
     } else {
       // По умолчанию открываем первый файл
+      params.numberValue = 1;
+    }
+
+    return params;
+  }
+
+  /**
+   * Нормализация для SendMessage
+   */
+  private normalizeSendMessage(entities: any[]): any {
+    const params: any = {};
+
+    // FileType (тип файла: тапсырма, сілтеме, презентация и т.д.)
+    const fileType = entities.find(e => e.category.trim() === 'FileType');
+    if (fileType) {
+      params.fileType = fileType.extraInformation?.[0]?.key || fileType.text;
+    }
+
+    // Нормализация вариантов "Видеоны" -> "Видео"
+    if (params.fileType === 'Видеоны' || params.fileType === 'видеоны') {
+      params.fileType = 'Видео';
+    }
+
+    // NumberValue (порядковый номер файла)
+    const numberValue = entities.find(e => e.category === 'NumberValue');
+    if (numberValue) {
+      const value = numberValue.extraInformation?.[0]?.key || numberValue.text;
+      params.numberValue = this.normalizeNumber(value);
+    } else {
+      // По умолчанию отправляем первый файл
+      params.numberValue = 1;
+    }
+
+    return params;
+  }
+
+  /**
+   * Нормализация для PrintFile
+   */
+  private normalizePrintFile(entities: any[]): any {
+    const params: any = {};
+
+    // FileType (тип файла: тапсырма, документ)
+    const fileType = entities.find(e => e.category.trim() === 'FileType');
+    if (fileType) {
+      params.fileType = fileType.extraInformation?.[0]?.key || fileType.text;
+    }
+
+    // NumberValue (порядковый номер файла)
+    const numberValue = entities.find(e => e.category === 'NumberValue');
+    if (numberValue) {
+      const value = numberValue.extraInformation?.[0]?.key || numberValue.text;
+      params.numberValue = this.normalizeNumber(value);
+    } else {
+      // По умолчанию печатаем первый файл
       params.numberValue = 1;
     }
 

@@ -11,6 +11,8 @@ import { selectLessonCommand } from './selectLesson.command';
 import { openSettingsCommand } from './openSettings.command';
 import { openFileCommand } from './openFile.command';
 import { closeFileCommand } from './closeFile.command';
+import { sendMessageCommand } from "./sendMessage.command.ts";
+import { printFileCommand } from "./printFile.command.ts";
 import type {Command} from "../CommandDispatcher.ts";
 
 /**
@@ -29,6 +31,8 @@ export const allNewCommands: Command[] = [
   openSettingsCommand,
   openFileCommand,
   closeFileCommand,
+  sendMessageCommand,
+  printFileCommand,
 ];
 
 // Re-export для удобства
@@ -42,5 +46,7 @@ export {
   divideByGroupSizeCommand,
   openSettingsCommand,
   openFileCommand,
-  closeFileCommand
+  closeFileCommand,
+  sendMessageCommand,
+  printFileCommand,
 };

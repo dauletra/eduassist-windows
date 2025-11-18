@@ -29,7 +29,7 @@ export const VOICE_CONFIG = {
     language: 'kk-KZ',
     clu: {
       projectName: 'KazakhConversationTeacher', // Использовать default из .env сервера
-      deploymentName: 'kazakh-clu-three' // Использовать default из .env сервера
+      deploymentName: 'kazakh-clu-five-deploy' // Использовать default из .env сервера
     }
   },
 
